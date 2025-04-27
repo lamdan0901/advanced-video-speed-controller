@@ -26,7 +26,7 @@ async function getSpeedPresets() {
             const speedButtons = doc.querySelectorAll(".speed-btn");
             const presets = Array.from(speedButtons)
               .map((btn) => parseFloat(btn.getAttribute("data-speed")))
-              .sort((a, b) => a - b);
+              .sort((a, b) => b - a);
 
             // Save for future use
             chrome.storage.sync.set({ speedButtonPresets: presets });
@@ -39,12 +39,6 @@ async function getSpeedPresets() {
 
 // Initialize when the page loads
 function initialize() {
-  console.log(
-    "Content: initialize called. Frame origin:",
-    window.location.origin,
-    "Is top frame:",
-    window.top === window.self
-  );
   const hostname = window.location.hostname;
 
   // Check if site is disabled - only attempt if in the top-level frame
@@ -55,12 +49,6 @@ function initialize() {
         function (data) {
           const disabledSites = data.disabledSites || {};
           siteDisabled = !!disabledSites[hostname];
-          console.log(
-            "Content: Initial site disabled status for",
-            hostname,
-            ":",
-            siteDisabled
-          );
 
           // Update badge to show current state
           if (window.top === window.self) {
@@ -87,16 +75,7 @@ function initialize() {
                   disabled: false,
                 });
               }
-            } catch (e) {
-              console.error(
-                "Content: Error sending updateBadge message:",
-                e,
-                "Frame origin:",
-                window.location.origin,
-                "Is top frame:",
-                window.top === window.self
-              );
-            }
+            } catch (e) {}
           }
 
           // Load and apply settings if site is not disabled
@@ -117,12 +96,7 @@ function initialize() {
           }
         }
       );
-    } catch (e) {
-      console.error(
-        "Content: Error accessing chrome.storage.sync in initialize:",
-        e
-      );
-    }
+    } catch (e) {}
   }
 
   // Create speed indicator even if disabled (will be shown when enabled)
@@ -142,7 +116,6 @@ function initialize() {
 
 // Reset all videos to normal speed (1.0x)
 function resetAllVideosToNormalSpeed() {
-  console.log("Content: resetAllVideosToNormalSpeed called"); // Log
   videos = document.querySelectorAll("video");
   videos.forEach((video) => {
     video.playbackRate = 1.0;
@@ -151,15 +124,10 @@ function resetAllVideosToNormalSpeed() {
 
 // Apply speed to all videos on the page
 function applySpeedToAllVideos() {
-  console.log(
-    "Content: applySpeedToAllVideos called. siteDisabled:",
-    siteDisabled
-  ); // Log
   if (siteDisabled) return;
 
   videos = document.querySelectorAll("video");
   videos.forEach((video) => {
-    console.log("Content: Applying speed", currentSpeed, "to video"); // Log
     video.playbackRate = currentSpeed;
 
     // Add event listener to maintain speed if the video resets
@@ -295,21 +263,7 @@ function increaseSpeed() {
           action: "updateBadge",
           speed: currentSpeed,
         });
-        console.log(
-          "Content: Sent updateBadge message (speed:",
-          currentSpeed,
-          ")"
-        ); // Log
-      } catch (e) {
-        console.error(
-          "Content: Error sending updateBadge message (speed):",
-          e,
-          "Frame origin:",
-          window.location.origin,
-          "Is top frame:",
-          window.top === window.self
-        ); // Log error
-      }
+      } catch (e) {}
     }
 
     saveSpeed();
@@ -341,21 +295,7 @@ function decreaseSpeed() {
           action: "updateBadge",
           speed: currentSpeed,
         });
-        console.log(
-          "Content: Sent updateBadge message (speed:",
-          currentSpeed,
-          ")"
-        ); // Log
-      } catch (e) {
-        console.error(
-          "Content: Error sending updateBadge message (speed):",
-          e,
-          "Frame origin:",
-          window.location.origin,
-          "Is top frame:",
-          window.top === window.self
-        ); // Log error
-      }
+      } catch (e) {}
     }
 
     saveSpeed();
@@ -377,21 +317,7 @@ function resetSpeed() {
         action: "updateBadge",
         speed: currentSpeed,
       });
-      console.log(
-        "Content: Sent updateBadge message (speed:",
-        currentSpeed,
-        ")"
-      ); // Log
-    } catch (e) {
-      console.error(
-        "Content: Error sending updateBadge message (speed):",
-        e,
-        "Frame origin:",
-        window.location.origin,
-        "Is top frame:",
-        window.top === window.self
-      ); // Log error
-    }
+    } catch (e) {}
   }
 
   saveSpeed();
@@ -399,45 +325,18 @@ function resetSpeed() {
 
 // Save the current speed
 function saveSpeed() {
-  console.log(
-    "Content: saveSpeed called. siteDisabled:",
-    siteDisabled,
-    "Frame origin:",
-    window.location.origin,
-    "Is top frame:",
-    window.top === window.self
-  ); // Log
   if (siteDisabled) return;
 
   // Only save general speed if in the top-level frame
   if (window.top === window.self) {
     try {
       chrome.storage.sync.set({ speed: currentSpeed });
-      console.log("Content: Saved general speed:", currentSpeed); // Log
-    } catch (e) {
-      console.error(
-        "Content: Error saving general speed:",
-        e,
-        "Frame origin:",
-        window.location.origin,
-        "Is top frame:",
-        window.top === window.self
-      ); // Log error
-    }
+    } catch (e) {}
   } else {
-    console.log(
-      "Content: Not in top-level frame, skipping general speed save."
-    ); // Log
   }
 
   // Save site-specific speed if enabled
   if (rememberSpeedEnabled) {
-    console.log(
-      "Content: rememberSpeedEnabled is true, attempting to save site-specific speed. Frame origin:",
-      window.location.origin,
-      "Is top frame:",
-      window.top === window.self
-    ); // Log
     // Only save site-specific settings if in the top-level frame
     if (window.top === window.self) {
       const hostname = window.location.hostname;
@@ -447,37 +346,10 @@ function saveSpeed() {
           siteSettings[hostname] = currentSpeed;
           try {
             chrome.storage.sync.set({ siteSettings: siteSettings });
-            console.log(
-              "Content: Saved site-specific speed for",
-              hostname,
-              ":",
-              currentSpeed
-            ); // Log
-          } catch (e) {
-            console.error(
-              "Content: Error saving site-specific speed:",
-              e,
-              "Frame origin:",
-              window.location.origin,
-              "Is top frame:",
-              window.top === window.self
-            ); // Log error
-          }
+          } catch (e) {}
         });
-      } catch (e) {
-        console.error(
-          "Content: Error getting siteSettings for saving:",
-          e,
-          "Frame origin:",
-          window.location.origin,
-          "Is top frame:",
-          window.top === window.self
-        ); // Log error
-      }
+      } catch (e) {}
     } else {
-      console.log(
-        "Content: Not in top-level frame, skipping site-specific speed save."
-      ); // Log
     }
   }
 }
@@ -504,9 +376,7 @@ async function setupYouTubeSpeedSelector() {
       }
       return;
     }
-  } catch (e) {
-    console.error("Error checking YouTube speed selector setting:", e);
-  }
+  } catch (e) {}
 
   // Create speed selector button
   speedSelector = document.createElement("div");
@@ -688,31 +558,14 @@ function createSpeedMenuItem(speed) {
 
 // Listen for messages from the popup
 chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
-  console.log(
-    "Content: Message received:",
-    message,
-    "Frame origin:",
-    window.location.origin,
-    "Is top frame:",
-    window.top === window.self
-  );
-
   // Handle messages regardless of frame level for critical functionality
   if (message.action === "disableSite") {
-    console.log(
-      "Content: Received disableSite action for hostname:",
-      message.hostname
-    );
     const hostname = window.location.hostname;
     if (!message.hostname || message.hostname === hostname) {
       siteDisabled = true;
       resetAllVideosToNormalSpeed();
     }
   } else if (message.action === "enableSite") {
-    console.log(
-      "Content: Received enableSite action for hostname:",
-      message.hostname
-    );
     const hostname = window.location.hostname;
     if (!message.hostname || message.hostname === hostname) {
       siteDisabled = false;
@@ -737,12 +590,6 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
       );
     }
   } else if (message.action === "setSpeed" && !siteDisabled) {
-    console.log(
-      "Content: Received setSpeed action with speed:",
-      message.speed,
-      "rememberSpeed:",
-      message.rememberSpeed
-    );
     currentSpeed = message.speed;
     applySpeedToAllVideos();
     showSpeedIndicator();
@@ -756,7 +603,6 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
     // Update YouTube speed selector when speed changes
     updateSpeedDisplay();
   } else if (message.action === "updateSettings") {
-    console.log("Content: Received updateSettings action:", message);
     if (message.keyboardShortcuts !== undefined) {
       keyboardShortcutsEnabled = message.keyboardShortcuts;
     }

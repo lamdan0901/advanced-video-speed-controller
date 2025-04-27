@@ -17,18 +17,10 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 // Listen for messages from popup or content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log("Background: Message received:", message);
   if (message.action === "updateBadge") {
-    console.log(
-      "Background: updateBadge message - speed:",
-      message.speed,
-      "disabled:",
-      message.disabled
-    );
     updateBadge(message.speed, message.disabled);
     sendResponse({ success: true });
   } else if (message.action === "updateSiteStatus") {
-    console.log("Background: updateSiteStatus message");
     // Ensure immediate badge update when site status changes
     updateBadgeForCurrentTab();
     sendResponse({ success: true });
@@ -37,7 +29,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Update badge for the current active tab
 function updateBadgeForCurrentTab() {
-  console.log("Background: updateBadgeForCurrentTab called");
   chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
     if (tabs[0] && tabs[0].url && !tabs[0].url.startsWith("chrome://")) {
       const currentUrl = new URL(tabs[0].url);
@@ -48,12 +39,6 @@ function updateBadgeForCurrentTab() {
         function (data) {
           const disabledSites = data.disabledSites || {};
           const isDisabled = !!disabledSites[hostname];
-          console.log(
-            "Background: Site disabled status for",
-            hostname,
-            ":",
-            isDisabled
-          );
 
           if (isDisabled) {
             chrome.action.setBadgeText({ text: "OFF" });
@@ -69,14 +54,8 @@ function updateBadgeForCurrentTab() {
               data.siteSettings[hostname]
             ) {
               speedToShow = data.siteSettings[hostname];
-              console.log(
-                `Background: Using site-specific speed for ${hostname}: ${speedToShow}`
-              );
             } else {
               // For new sites or when remember speed is off, always use 1.0
-              console.log(
-                `Background: Using default speed 1.0 for ${hostname}`
-              );
             }
 
             updateBadge(speedToShow, false);
@@ -89,12 +68,6 @@ function updateBadgeForCurrentTab() {
 
 // Update the badge with the current speed
 function updateBadge(speed, disabled) {
-  console.log(
-    "Background: updateBadge called with speed:",
-    speed,
-    "disabled:",
-    disabled
-  );
   if (disabled) {
     chrome.action.setBadgeText({ text: "OFF" });
     chrome.action.setBadgeBackgroundColor({ color: "#888888" });

@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const speedButtons = document.querySelectorAll(".speed-btn");
   const presets = Array.from(speedButtons)
     .map((btn) => parseFloat(btn.dataset.speed))
-    .sort((a, b) => a - b);
+    .sort((a, b) => b - a);
   chrome.storage.sync.set({ speedButtonPresets: presets });
 
   const speedSlider = document.getElementById("speed-slider");
@@ -26,20 +26,15 @@ document.addEventListener("DOMContentLoaded", function () {
   // Attach event handler for disable site checkbox early
   disableSiteCheckbox.addEventListener("change", function () {
     if (!currentHostname) {
-      console.warn("[DEBUG] Checkbox changed but currentHostname is not set");
       return;
     }
 
     const isDisabling = disableSiteCheckbox.checked;
-    console.log(
-      `[DEBUG] Checkbox changed. isDisabling: ${isDisabling}, currentHostname: ${currentHostname}`
-    );
 
     chrome.storage.sync.get(
       ["disabledSites", "speed", "siteSettings"], // Removed rememberSpeed
       function (data) {
         if (chrome.runtime.lastError) {
-          console.error("[DEBUG] Storage get error:", chrome.runtime.lastError);
         }
         const disabledSites = data.disabledSites || {};
 
@@ -111,10 +106,6 @@ document.addEventListener("DOMContentLoaded", function () {
         // Save disabled sites state
         chrome.storage.sync.set({ disabledSites: disabledSites }, function () {
           if (chrome.runtime.lastError) {
-            console.error(
-              "[DEBUG] Storage set error:",
-              chrome.runtime.lastError
-            );
           }
           chrome.runtime.sendMessage({ action: "updateSiteStatus" });
         });
@@ -128,7 +119,6 @@ document.addEventListener("DOMContentLoaded", function () {
       try {
         const url = new URL(tabs[0].url);
         currentHostname = url.hostname;
-        console.log(`[DEBUG] Got currentHostname: ${currentHostname}`);
 
         // Always reset currentSpeed to 1.0 before loading settings for a new site
         currentSpeed = 1.0;
@@ -145,17 +135,10 @@ document.addEventListener("DOMContentLoaded", function () {
           ],
           function (data) {
             if (chrome.runtime.lastError) {
-              console.error(
-                "[DEBUG] Storage get error:",
-                chrome.runtime.lastError
-              );
             }
             const disabledSites = data.disabledSites || {};
             const isDisabled = !!disabledSites[currentHostname];
             disableSiteCheckbox.checked = isDisabled;
-            console.log(
-              `[DEBUG] Initial load: isDisabled: ${isDisabled}, currentHostname: ${currentHostname}`
-            );
 
             // Default remember speed to true if not set
             const rememberedGlobally = data.rememberSpeedEnabled !== false;
@@ -176,17 +159,12 @@ document.addEventListener("DOMContentLoaded", function () {
               if (data.siteSettings[currentHostname]) {
                 currentSpeed = parseFloat(data.siteSettings[currentHostname]);
                 siteSpeedFound = true;
-                console.log(
-                  "[DEBUG] Loaded site-specific speed:",
-                  currentSpeed
-                );
               }
             }
 
             // If no site-specific speed was found and site is not disabled, keep default 1.0
             if (!siteSpeedFound && !isDisabled) {
               currentSpeed = 1.0;
-              console.log("[DEBUG] Using default speed 1.0");
             }
 
             // Update UI elements
@@ -220,11 +198,8 @@ document.addEventListener("DOMContentLoaded", function () {
             updateUIForDisabledState(isDisabled);
           }
         );
-      } catch (e) {
-        console.error("[DEBUG] Error parsing URL:", e);
-      }
+      } catch (e) {}
     } else {
-      console.warn("[DEBUG] No active tab or URL found.");
     }
   });
 
@@ -374,22 +349,13 @@ document.addEventListener("DOMContentLoaded", function () {
     if (rememberSpeedCheckbox.checked && currentHostname) {
       chrome.storage.sync.get(["siteSettings"], function (data) {
         if (chrome.runtime.lastError) {
-          console.error(
-            "[DEBUG] Storage get error in saveSiteSpeedIfNeeded:",
-            chrome.runtime.lastError
-          );
           return;
         }
         const siteSettings = data.siteSettings || {};
         siteSettings[currentHostname] = speed;
         chrome.storage.sync.set({ siteSettings }, function () {
           if (chrome.runtime.lastError) {
-            console.error(
-              "[DEBUG] Storage set error in saveSiteSpeedIfNeeded:",
-              chrome.runtime.lastError
-            );
           } else {
-            console.log(`[DEBUG] Saved speed ${speed} for ${currentHostname}`);
           }
         });
       });
@@ -457,8 +423,6 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function updateUIForDisabledState(disabled) {
-    console.log("[DEBUG] updateUIForDisabledState called with:", disabled);
-
     // Update the speed value display
     if (disabled) {
       speedValue.textContent = "OFF";
@@ -497,9 +461,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // The disable site checkbox should always remain enabled
     disableSiteCheckbox.disabled = false;
-    console.log(
-      `[DEBUG] disableSiteCheckbox.disabled: ${disableSiteCheckbox.disabled}, checked: ${disableSiteCheckbox.checked}`
-    );
 
     // Update the label for the disable site checkbox
     const disableSiteLabel = document.querySelector(
