@@ -1,0 +1,196 @@
+body {
+  font-family: Arial, sans-serif;
+  width: 300px;
+  margin: 0;
+  padding: 15px;
+  background-color: #f5f5f5;
+}
+
+.container {
+  background-color: white;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.container.site-disabled {
+  opacity: 0.8;
+}
+
+.container.site-disabled .speed-control,
+.container.site-disabled .preset-section,
+.container.site-disabled .settings-section .setting:not(:last-child) {
+  pointer-events: none;
+}
+
+/* Style for the OFF text */
+.container.site-disabled #speed-value {
+  font-weight: bold;
+  color: #888;
+}
+
+h1 {
+  font-size: 18px;
+  margin-top: 0;
+  margin-bottom: 15px;
+  text-align: center;
+  color: #333;
+}
+
+h2 {
+  font-size: 16px;
+  margin-top: 15px;
+  margin-bottom: 10px;
+  color: #444;
+}
+
+.speed-control {
+  margin-bottom: 15px;
+}
+
+#speed-slider {
+  width: 100%;
+  margin: 10px 0;
+}
+
+.speed-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.speed-btn {
+  flex: 1;
+  min-width: 45px;
+  padding: 5px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.speed-btn:hover {
+  background-color: #e0e0e0;
+}
+
+.speed-btn.active {
+  background-color: #4285f4;
+  color: white;
+  border-color: #3367d6;
+}
+
+/* Disabled controls */
+.speed-btn:disabled,
+#add-preset-btn:disabled,
+#new-preset:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.preset-btn.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Add a bit more space for the disable site option */
+.setting {
+  margin-bottom: 12px;
+}
+
+.preset-section {
+  margin-bottom: 15px;
+  padding-top: 10px;
+  border-top: 1px solid #eee;
+}
+
+#presets-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.preset-btn {
+  position: relative;
+  padding: 5px 20px 5px 10px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.preset-btn:hover {
+  background-color: #e0e0e0;
+}
+
+.preset-btn .remove {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: #999;
+  padding: 0 3px;
+}
+
+.preset-btn:hover .remove {
+  color: #f44336;
+}
+
+.add-preset {
+  display: flex;
+  gap: 5px;
+}
+
+#new-preset {
+  flex: 1;
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+#add-preset-btn {
+  padding: 5px 10px;
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+#add-preset-btn:hover {
+  background-color: #3367d6;
+}
+
+#add-preset-btn:disabled {
+  background-color: #9aa0a6;
+  cursor: not-allowed;
+}
+
+.settings-section {
+  padding-top: 10px;
+  border-top: 1px solid #eee;
+}
+
+.setting {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.shortcuts-info {
+  font-size: 12px;
+  color: #666;
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+}
+
+.shortcuts-info p {
+  margin: 5px 0;
+}

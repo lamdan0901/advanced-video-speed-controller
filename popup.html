@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Advanced Video Speed Controller</title>
+    <link rel="stylesheet" href="popup.css" />
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Video Speed Controller</h1>
+
+      <div class="speed-control">
+        <label for="speed-slider"
+          >Speed: <span id="speed-value">1.0</span>x</label
+        >
+        <input
+          type="range"
+          id="speed-slider"
+          min="0.1"
+          max="5"
+          step="0.1"
+          value="1.0"
+        />
+
+        <div class="speed-buttons">
+          <button class="speed-btn" data-speed="0.25">0.25x</button>
+          <button class="speed-btn" data-speed="0.5">0.5x</button>
+          <button class="speed-btn" data-speed="1.0">1.0x</button>
+          <button class="speed-btn" data-speed="1.5">1.5x</button>
+          <button class="speed-btn" data-speed="2.0">2.0x</button>
+          <button class="speed-btn" data-speed="3.0">3.0x</button>
+        </div>
+      </div>
+
+      <div class="preset-section">
+        <h2>Custom Presets</h2>
+        <div id="presets-container">
+          <!-- Presets will be added here dynamically -->
+        </div>
+
+        <div class="add-preset">
+          <input
+            type="text"
+            id="new-preset"
+            min="0.1"
+            max="5"
+            step="0.1"
+            placeholder="New preset speed"
+          />
+          <button id="add-preset-btn">Add Preset</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h2>Settings</h2>
+        <div class="setting">
+          <label for="remember-speed">Remember speed for this site</label>
+          <input type="checkbox" id="remember-speed" checked />
+        </div>
+        <div class="setting">
+          <label for="keyboard-shortcuts">Enable keyboard shortcuts</label>
+          <input type="checkbox" id="keyboard-shortcuts" checked />
+        </div>
+        <div class="setting">
+          <label for="disable-site">Disable on this site</label>
+          <input type="checkbox" id="disable-site" />
+        </div>
+        <div class="shortcuts-info">
+          <p>Shift + &uarr;: Increase speed</p>
+          <p>Shift + &darr;: Decrease speed</p>
+          <p>Shift + R: Reset to 1.0x</p>
+        </div>
+      </div>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>
