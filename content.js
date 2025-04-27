@@ -6,6 +6,36 @@ let siteDisabled = false;
 let speedIndicator = null;
 let hideTimeout = null;
 let videos = [];
+let speedSelector = null;
+let youtubeControls = null;
+let menuPortal = null;
+
+// Function to get speed presets from chrome storage
+async function getSpeedPresets() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(["speedButtonPresets"], function (data) {
+      if (data.speedButtonPresets) {
+        resolve(data.speedButtonPresets);
+      } else {
+        // If not saved yet, get from popup.html and save
+        fetch(chrome.runtime.getURL("popup.html"))
+          .then((response) => response.text())
+          .then((html) => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, "text/html");
+            const speedButtons = doc.querySelectorAll(".speed-btn");
+            const presets = Array.from(speedButtons)
+              .map((btn) => parseFloat(btn.getAttribute("data-speed")))
+              .sort((a, b) => a - b);
+
+            // Save for future use
+            chrome.storage.sync.set({ speedButtonPresets: presets });
+            resolve(presets);
+          });
+      }
+    });
+  });
+}
 
 // Initialize when the page loads
 function initialize() {
@@ -103,6 +133,11 @@ function initialize() {
 
   // Set up keyboard shortcuts (will be disabled if site is disabled)
   setupKeyboardShortcuts();
+
+  // Check if we're on YouTube
+  if (window.location.hostname === "www.youtube.com") {
+    setupYouTubeSpeedSelector();
+  }
 }
 
 // Reset all videos to normal speed (1.0x)
@@ -447,6 +482,210 @@ function saveSpeed() {
   }
 }
 
+// Function to set up YouTube speed selector
+async function setupYouTubeSpeedSelector() {
+  // Check if feature is enabled
+  try {
+    const data = await new Promise((resolve) => {
+      chrome.storage.sync.get(["youtubeSpeedSelectorEnabled"], resolve);
+    });
+
+    if (data.youtubeSpeedSelectorEnabled === false) {
+      // Remove existing selector if it exists
+      const existingSelector = document.querySelector(
+        ".extension-speed-selector"
+      );
+      if (existingSelector) {
+        existingSelector.remove();
+      }
+      if (menuPortal) {
+        menuPortal.remove();
+        menuPortal = null;
+      }
+      return;
+    }
+  } catch (e) {
+    console.error("Error checking YouTube speed selector setting:", e);
+  }
+
+  // Create speed selector button
+  speedSelector = document.createElement("div");
+  speedSelector.className = "extension-speed-selector ytp-button";
+
+  const display = document.createElement("div");
+  display.className = "extension-speed-display";
+  display.textContent = currentSpeed + "x";
+  speedSelector.appendChild(display);
+
+  // Create menu portal at document root
+  if (!menuPortal) {
+    menuPortal = document.createElement("div");
+    menuPortal.className = "extension-speed-menu-portal";
+    document.body.appendChild(menuPortal);
+  }
+
+  // Get speed presets from popup.html
+  const speedPresets = await getSpeedPresets();
+
+  // Add speed presets
+  speedPresets.forEach((speed) => {
+    const item = createSpeedMenuItem(speed);
+    menuPortal.appendChild(item);
+  });
+
+  // Add separator and custom presets
+  const separator = document.createElement("div");
+  separator.className = "extension-speed-separator";
+  menuPortal.appendChild(separator);
+
+  // Load custom presets
+  chrome.storage.sync.get(["presets"], function (data) {
+    if (data.presets && Array.isArray(data.presets)) {
+      data.presets.forEach((speed) => {
+        const item = createSpeedMenuItem(speed);
+        menuPortal.appendChild(item);
+      });
+    }
+  });
+
+  // Try to insert button into YouTube controls
+  const insertSpeedSelector = () => {
+    const rightControls = document.querySelector(".ytp-right-controls");
+    if (rightControls && !document.querySelector(".extension-speed-selector")) {
+      rightControls.insertBefore(speedSelector, rightControls.firstChild);
+      youtubeControls = rightControls;
+
+      // Position menu when button is hovered
+      const updateMenuPosition = () => {
+        const rect = speedSelector.getBoundingClientRect();
+        const menuHeight = menuPortal.offsetHeight;
+
+        // Position above the button
+        menuPortal.style.left = rect.left + "px";
+        menuPortal.style.top = rect.top - menuHeight - 8 + "px";
+
+        // Adjust horizontal position if menu would go off-screen
+        const menuRight = rect.left + menuPortal.offsetWidth;
+        if (menuRight > window.innerWidth) {
+          menuPortal.style.left =
+            window.innerWidth - menuPortal.offsetWidth - 8 + "px";
+        }
+      };
+
+      // Handle mouse interactions
+      let isHovered = false;
+      let hoverTimeout;
+
+      const showMenu = () => {
+        isHovered = true;
+        clearTimeout(hoverTimeout);
+        updateMenuPosition();
+        menuPortal.classList.add("visible");
+      };
+
+      const hideMenu = () => {
+        isHovered = false;
+        hoverTimeout = setTimeout(() => {
+          if (!isHovered) {
+            menuPortal.classList.remove("visible");
+          }
+        }, 150);
+      };
+
+      // Add event listeners
+      speedSelector.addEventListener("mouseenter", showMenu);
+      speedSelector.addEventListener("mouseleave", hideMenu);
+      menuPortal.addEventListener("mouseenter", showMenu);
+      menuPortal.addEventListener("mouseleave", hideMenu);
+
+      // Update position on window resize and scroll
+      window.addEventListener("resize", () => {
+        if (menuPortal.classList.contains("visible")) {
+          updateMenuPosition();
+        }
+      });
+
+      window.addEventListener("scroll", () => {
+        if (menuPortal.classList.contains("visible")) {
+          updateMenuPosition();
+        }
+      });
+    }
+  };
+
+  // Initial attempt
+  insertSpeedSelector();
+
+  // Watch for player changes
+  const observer = new MutationObserver(() => {
+    if (!document.querySelector(".extension-speed-selector")) {
+      insertSpeedSelector();
+    }
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
+}
+
+// Update speed display in YouTube selector
+function updateSpeedDisplay() {
+  if (speedSelector) {
+    const display = speedSelector.querySelector(".extension-speed-display");
+    if (display) {
+      display.textContent = currentSpeed + "x";
+    }
+
+    // Update active state in menu
+    if (menuPortal) {
+      const items = menuPortal.querySelectorAll(".extension-speed-item");
+      items.forEach((item) => {
+        const itemSpeed = parseFloat(item.textContent);
+        if (Math.abs(itemSpeed - currentSpeed) < 0.01) {
+          item.classList.add("active");
+        } else {
+          item.classList.remove("active");
+        }
+      });
+    }
+  }
+}
+
+// Create a speed menu item
+function createSpeedMenuItem(speed) {
+  const item = document.createElement("div");
+  item.className = "extension-speed-item";
+  if (Math.abs(speed - currentSpeed) < 0.01) {
+    item.classList.add("active");
+  }
+  item.textContent = speed + "x";
+
+  item.addEventListener("click", (e) => {
+    e.stopPropagation();
+    currentSpeed = speed;
+    updateSpeedDisplay();
+    applySpeedToAllVideos();
+    showSpeedIndicator();
+    saveSpeed();
+
+    // Update extension badge immediately
+    if (window.top === window.self) {
+      chrome.runtime.sendMessage({
+        action: "updateBadge",
+        speed: currentSpeed,
+      });
+    }
+
+    // Hide menu after selection
+    if (menuPortal) {
+      menuPortal.classList.remove("visible");
+    }
+  });
+
+  return item;
+}
+
 // Listen for messages from the popup
 chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
   console.log(
@@ -513,12 +752,34 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
       rememberSpeedEnabled = true;
       saveSpeed();
     }
+
+    // Update YouTube speed selector when speed changes
+    updateSpeedDisplay();
   } else if (message.action === "updateSettings") {
-    console.log(
-      "Content: Received updateSettings action with keyboardShortcuts:",
-      message.keyboardShortcuts
-    );
-    keyboardShortcutsEnabled = message.keyboardShortcuts;
+    console.log("Content: Received updateSettings action:", message);
+    if (message.keyboardShortcuts !== undefined) {
+      keyboardShortcutsEnabled = message.keyboardShortcuts;
+    }
+    if (
+      message.youtubeSpeedSelectorEnabled !== undefined &&
+      window.location.hostname === "www.youtube.com"
+    ) {
+      if (message.youtubeSpeedSelectorEnabled) {
+        setupYouTubeSpeedSelector();
+      } else {
+        // Remove existing selector if it exists
+        const existingSelector = document.querySelector(
+          ".extension-speed-selector"
+        );
+        if (existingSelector) {
+          existingSelector.remove();
+        }
+        if (menuPortal) {
+          menuPortal.remove();
+          menuPortal = null;
+        }
+      }
+    }
   }
 });
 
@@ -539,6 +800,36 @@ style.textContent = `
     transition: opacity 0.3s;
     opacity: 0;
     pointer-events: none;
+  }
+  .extension-speed-menu-portal {
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    z-index: 9999;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .extension-speed-menu-portal.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .extension-speed-item {
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+  .extension-speed-item.active {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+  .extension-speed-separator {
+    height: 1px;
+    background-color: rgba(255, 255, 255, 0.3);
+    margin: 5px 0;
   }
 `;
 document.head.appendChild(style);

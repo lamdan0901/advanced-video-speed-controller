@@ -96,7 +96,44 @@ h2 {
 
 /* Add a bit more space for the disable site option */
 .setting {
-  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.setting-message-container {
+  margin: -5px 0 10px 0;
+}
+
+.setting-message {
+  display: none;
+  font-size: 12px;
+  color: #666;
+  font-style: italic;
+  padding-left: 4px;
+}
+
+.setting-message.show {
+  display: block;
+}
+
+.youtube-speed-setting {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.setting-message {
+  display: none;
+  font-size: 12px;
+  color: #666;
+  font-style: italic;
+  margin-left: 4px;
+}
+
+.setting-message.show {
+  display: block;
 }
 
 .preset-section {
@@ -180,6 +217,22 @@ h2 {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 10px;
+}
+
+.setting-message-container {
+  margin: -5px 0 10px 0;
+}
+
+.setting-message {
+  display: none;
+  font-size: 12px;
+  color: #666;
+  font-style: italic;
+  padding-left: 4px;
+}
+
+.setting-message.show {
+  display: block;
 }
 
 .shortcuts-info {

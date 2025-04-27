@@ -1,7 +1,13 @@
 document.addEventListener("DOMContentLoaded", function () {
+  // Save speed button presets when popup loads
+  const speedButtons = document.querySelectorAll(".speed-btn");
+  const presets = Array.from(speedButtons)
+    .map((btn) => parseFloat(btn.dataset.speed))
+    .sort((a, b) => a - b);
+  chrome.storage.sync.set({ speedButtonPresets: presets });
+
   const speedSlider = document.getElementById("speed-slider");
   const speedValue = document.getElementById("speed-value");
-  const speedButtons = document.querySelectorAll(".speed-btn");
   const addPresetBtn = document.getElementById("add-preset-btn");
   const newPresetInput = document.getElementById("new-preset");
   const presetsContainer = document.getElementById("presets-container");
@@ -9,6 +15,9 @@ document.addEventListener("DOMContentLoaded", function () {
   const keyboardShortcutsCheckbox =
     document.getElementById("keyboard-shortcuts");
   const disableSiteCheckbox = document.getElementById("disable-site");
+  const youtubeSpeedSelectorCheckbox = document.getElementById(
+    "youtube-speed-selector"
+  );
 
   let currentSpeed = 1.0;
   let customPresets = [];
@@ -132,6 +141,7 @@ document.addEventListener("DOMContentLoaded", function () {
             "siteSettings",
             "disabledSites",
             "rememberSpeedEnabled", // Add this to track remember speed globally
+            "youtubeSpeedSelectorEnabled", // Add this to track YouTube speed selector
           ],
           function (data) {
             if (chrome.runtime.lastError) {
@@ -150,6 +160,10 @@ document.addEventListener("DOMContentLoaded", function () {
             // Default remember speed to true if not set
             const rememberedGlobally = data.rememberSpeedEnabled !== false;
             rememberSpeedCheckbox.checked = rememberedGlobally;
+
+            // Default YouTube speed selector to true if not set
+            youtubeSpeedSelectorCheckbox.checked =
+              data.youtubeSpeedSelectorEnabled !== false;
 
             // Always try to load site-specific speed first if site is not disabled and remember speed is enabled
             let siteSpeedFound = false;
@@ -317,6 +331,30 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       }
     });
+  });
+
+  youtubeSpeedSelectorCheckbox.addEventListener("change", function () {
+    chrome.storage.sync.set({ youtubeSpeedSelectorEnabled: this.checked });
+
+    // Show reload message
+    const reloadMessage = document.getElementById("youtube-reload-message");
+    reloadMessage.classList.add("show");
+
+    // Update content script
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          action: "updateSettings",
+          youtubeSpeedSelectorEnabled: youtubeSpeedSelectorCheckbox.checked,
+        });
+      }
+    });
+  });
+
+  // Hide reload message when popup reopens
+  chrome.storage.sync.get(["youtubeSpeedSelectorEnabled"], function (data) {
+    const reloadMessage = document.getElementById("youtube-reload-message");
+    reloadMessage.classList.remove("show");
   });
 
   // Helper functions
