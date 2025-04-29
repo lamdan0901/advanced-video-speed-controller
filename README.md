@@ -2,8 +2,6 @@
 
 A Chrome extension that gives you precise control over video playback speed on any website.
 
-![Extension Logo](icons/logo.png)
-
 ## Features
 
 - **Precise Speed Control**: Adjust video playback speed from 0.1x to 5.0x with a slider or preset buttons
