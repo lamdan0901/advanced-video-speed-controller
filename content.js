@@ -126,19 +126,45 @@ function resetAllVideosToNormalSpeed() {
 function applySpeedToAllVideos() {
   if (siteDisabled) return;
 
-  videos = document.querySelectorAll("video");
-  videos.forEach((video) => {
-    video.playbackRate = currentSpeed;
+  // Handle videos in the main document
+  const videos = document.querySelectorAll("video");
+  applySpeedToVideos(videos);
 
-    // Add event listener to maintain speed if the video resets
+  // Send speed update to iframes
+  document.querySelectorAll("iframe").forEach((iframe) => {
+    try {
+      iframe.contentWindow.postMessage(
+        {
+          type: "VIDEO_SPEED_CONTROL",
+          action: "SET_SPEED",
+          speed: currentSpeed,
+        },
+        "*"
+      );
+    } catch (e) {
+      // Handle cross-origin iframe errors silently
+    }
+  });
+}
+
+// Helper function to apply speed to a collection of videos
+function applySpeedToVideos(videos) {
+  videos.forEach((video) => {
     if (!video.dataset.speedControlled) {
       video.dataset.speedControlled = "true";
+
+      // Add event listeners for better speed control
+      video.addEventListener("play", () => {
+        if (!siteDisabled && video.playbackRate !== currentSpeed) {
+          video.playbackRate = currentSpeed;
+        }
+      });
+
       video.addEventListener("ratechange", function () {
-        // Only override if it wasn't changed by our extension and site is not disabled
         if (
           !siteDisabled &&
-          video.playbackRate !== currentSpeed &&
-          !video.dataset.changingSpeed
+          !video.dataset.changingSpeed &&
+          video.playbackRate !== currentSpeed
         ) {
           video.dataset.changingSpeed = "true";
           video.playbackRate = currentSpeed;
@@ -147,72 +173,262 @@ function applySpeedToAllVideos() {
           }, 50);
         }
       });
+
+      // Handle dynamic loading
+      if (video.readyState >= 1) {
+        video.playbackRate = currentSpeed;
+      } else {
+        video.addEventListener("loadedmetadata", () => {
+          if (!siteDisabled) {
+            video.playbackRate = currentSpeed;
+          }
+        });
+      }
+    }
+
+    // Always try to set the speed
+    if (!siteDisabled && video.playbackRate !== currentSpeed) {
+      video.playbackRate = currentSpeed;
     }
   });
 }
 
-// Create a visual indicator for speed changes
+// Use Shadow DOM for speed controls
 function createSpeedIndicator() {
   if (!speedIndicator) {
     speedIndicator = document.createElement("div");
     speedIndicator.id = "video-speed-indicator";
-    speedIndicator.style.cssText = `
-      position: fixed;
-      top: 50px;
-      right: 50px;
-      background-color: rgba(0, 0, 0, 0.7);
-      color: white;
-      padding: 10px 15px;
-      border-radius: 5px;
-      font-family: Arial, sans-serif;
-      font-size: 16px;
-      z-index: 9999;
-      transition: opacity 0.3s;
-      opacity: 0;
-      pointer-events: none;
+
+    // Create shadow root
+    const shadow = speedIndicator.attachShadow({ mode: "open" });
+
+    // Add styles to shadow DOM
+    const style = document.createElement("style");
+    style.textContent = `
+      :host {
+        position: fixed;
+        top: 50px;
+        right: 50px;
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px;
+        font-family: Arial, sans-serif;
+        font-size: 16px;
+        z-index: 9999;
+        transition: opacity 0.3s;
+        opacity: 0;
+        pointer-events: none;
+      }
+      :host(.visible) {
+        opacity: 1;
+      }
     `;
+
+    // Create content
+    const content = document.createElement("div");
+    content.className = "speed-display";
+
+    shadow.appendChild(style);
+    shadow.appendChild(content);
     document.body.appendChild(speedIndicator);
   }
 }
 
-// Show the speed indicator
+// Show speed indicator with Shadow DOM
 function showSpeedIndicator() {
-  if (siteDisabled) return;
+  if (siteDisabled || !speedIndicator) return;
 
-  if (speedIndicator) {
-    speedIndicator.textContent = `${currentSpeed
-      .toFixed(2)
-      .replace(/\.?0+$/, "")}x`;
-    speedIndicator.style.opacity = "1";
+  const display = speedIndicator.shadowRoot.querySelector(".speed-display");
+  if (display) {
+    display.textContent = `${currentSpeed.toFixed(2).replace(/\.?0+$/, "")}x`;
+    speedIndicator.classList.add("visible");
 
-    // Hide after a delay
     clearTimeout(hideTimeout);
     hideTimeout = setTimeout(() => {
-      speedIndicator.style.opacity = "0";
+      speedIndicator.classList.remove("visible");
     }, 1500);
   }
 }
 
-// Set up mutation observer to detect new videos
+// Improved video detection and control
 function setupVideoObserver() {
   const observer = new MutationObserver((mutations) => {
-    let shouldCheck = false;
+    let videoAdded = false;
 
     mutations.forEach((mutation) => {
-      if (mutation.addedNodes.length > 0) {
-        shouldCheck = true;
+      if (mutation.type === "childList") {
+        mutation.addedNodes.forEach((node) => {
+          if (
+            node.nodeName === "VIDEO" ||
+            (node.getElementsByTagName &&
+              node.getElementsByTagName("video").length > 0)
+          ) {
+            videoAdded = true;
+          }
+          // Handle iframes
+          if (node.nodeName === "IFRAME") {
+            try {
+              handleIframe(node);
+            } catch (e) {
+              // Handle cross-origin iframe errors silently
+            }
+          }
+        });
+      }
+      // Check for video source changes
+      if (
+        mutation.type === "attributes" &&
+        mutation.target.nodeName === "VIDEO" &&
+        (mutation.attributeName === "src" ||
+          mutation.attributeName === "currentSrc")
+      ) {
+        videoAdded = true;
       }
     });
 
-    if (shouldCheck && !siteDisabled) {
-      applySpeedToAllVideos();
+    if (videoAdded && !siteDisabled) {
+      initializeNewVideos();
     }
   });
 
-  observer.observe(document.body, {
+  // Observe entire document including attribute changes
+  observer.observe(document.documentElement, {
     childList: true,
     subtree: true,
+    attributes: true,
+    attributeFilter: ["src", "currentSrc"],
   });
+
+  // Initial check for videos
+  initializeNewVideos();
+}
+
+function handleIframe(iframe) {
+  try {
+    // Try to access iframe document
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+
+    // Setup observer for iframe content
+    const iframeObserver = new MutationObserver(() => {
+      const videos = iframeDoc.getElementsByTagName("video");
+      if (videos.length > 0) {
+        Array.from(videos).forEach((video) => {
+          if (!video.dataset.speedControlled) {
+            initializeVideoElement(video);
+          }
+        });
+      }
+    });
+
+    iframeObserver.observe(iframeDoc.documentElement, {
+      childList: true,
+      subtree: true,
+    });
+
+    // Initial check for videos in iframe
+    const videos = iframeDoc.getElementsByTagName("video");
+    Array.from(videos).forEach((video) => {
+      if (!video.dataset.speedControlled) {
+        initializeVideoElement(video);
+      }
+    });
+  } catch (e) {
+    // Cross-origin iframe - inject script via postMessage
+    const script = `
+      (function() {
+        const videos = document.getElementsByTagName('video');
+        Array.from(videos).forEach(video => {
+          video.addEventListener('ratechange', () => {
+            window.parent.postMessage({
+              type: 'VIDEO_SPEED_CONTROL',
+              action: 'SPEED_CHANGED',
+              speed: video.playbackRate
+            }, '*');
+          });
+        });
+        window.addEventListener('message', (event) => {
+          if (event.data && event.data.type === 'VIDEO_SPEED_CONTROL') {
+            const videos = document.getElementsByTagName('video');
+            Array.from(videos).forEach(video => {
+              video.playbackRate = event.data.speed;
+            });
+          }
+        });
+      })();
+    `;
+
+    try {
+      iframe.contentWindow.postMessage(
+        {
+          type: "VIDEO_SPEED_CONTROL",
+          action: "INJECT_SCRIPT",
+          script: script,
+        },
+        "*"
+      );
+    } catch (e) {
+      // Handle injection errors silently
+    }
+  }
+}
+
+function initializeNewVideos() {
+  // Handle videos in main document
+  const videos = document.getElementsByTagName("video");
+  Array.from(videos).forEach((video) => {
+    if (!video.dataset.speedControlled) {
+      initializeVideoElement(video);
+    }
+  });
+
+  // Handle videos in same-origin iframes
+  const iframes = document.getElementsByTagName("iframe");
+  Array.from(iframes).forEach(handleIframe);
+}
+
+function initializeVideoElement(video) {
+  video.dataset.speedControlled = "true";
+
+  // Create a custom event dispatcher
+  const dispatchSpeedEvent = (speed) => {
+    video.dispatchEvent(
+      new CustomEvent("videospeedchange", {
+        bubbles: true,
+        composed: true,
+        detail: { speed },
+      })
+    );
+  };
+
+  // Add event listeners
+  video.addEventListener("play", () => {
+    if (!siteDisabled && video.playbackRate !== currentSpeed) {
+      video.playbackRate = currentSpeed;
+      dispatchSpeedEvent(currentSpeed);
+    }
+  });
+
+  video.addEventListener("ratechange", () => {
+    if (
+      !siteDisabled &&
+      !video.dataset.changingSpeed &&
+      video.playbackRate !== currentSpeed
+    ) {
+      video.dataset.changingSpeed = "true";
+      video.playbackRate = currentSpeed;
+      dispatchSpeedEvent(currentSpeed);
+      setTimeout(() => {
+        delete video.dataset.changingSpeed;
+      }, 50);
+    }
+  });
+
+  // Set initial speed
+  if (!siteDisabled) {
+    video.playbackRate = currentSpeed;
+    dispatchSpeedEvent(currentSpeed);
+  }
 }
 
 // Set up keyboard shortcuts
@@ -363,7 +579,6 @@ async function setupYouTubeSpeedSelector() {
     });
 
     if (data.youtubeSpeedSelectorEnabled === false) {
-      // Remove existing selector if it exists
       const existingSelector = document.querySelector(
         ".extension-speed-selector"
       );
@@ -394,7 +609,6 @@ async function setupYouTubeSpeedSelector() {
     document.body.appendChild(menuPortal);
   }
 
-  // Get speed presets from popup.html
   const speedPresets = await getSpeedPresets();
 
   // Add speed presets
@@ -403,7 +617,6 @@ async function setupYouTubeSpeedSelector() {
     menuPortal.appendChild(item);
   });
 
-  // Add separator and custom presets
   const separator = document.createElement("div");
   separator.className = "extension-speed-separator";
   menuPortal.appendChild(separator);
@@ -625,6 +838,36 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
           menuPortal = null;
         }
       }
+    }
+  }
+});
+
+// Add message passing for iframes
+window.addEventListener("message", function (event) {
+  // Verify message origin for security
+  if (event.data && event.data.type === "VIDEO_SPEED_CONTROL") {
+    switch (event.data.action) {
+      case "SET_SPEED":
+        if (!siteDisabled && event.data.speed) {
+          const videos = document.querySelectorAll("video");
+          videos.forEach((video) => {
+            video.playbackRate = event.data.speed;
+          });
+        }
+        break;
+      case "GET_SPEED":
+        const videos = document.querySelectorAll("video");
+        if (videos.length > 0) {
+          event.source.postMessage(
+            {
+              type: "VIDEO_SPEED_CONTROL",
+              action: "SPEED_UPDATE",
+              speed: videos[0].playbackRate,
+            },
+            "*"
+          );
+        }
+        break;
     }
   }
 });
