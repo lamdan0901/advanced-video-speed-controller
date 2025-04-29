@@ -67,25 +67,17 @@ function updateBadgeForCurrentTab() {
 }
 
 // Update the badge with the current speed
-function updateBadge(speed, disabled) {
-  if (disabled) {
-    chrome.action.setBadgeText({ text: "OFF" });
-    chrome.action.setBadgeBackgroundColor({ color: "#888888" });
-    return;
-  }
-
+function updateBadge(speed) {
   // Format the speed value (remove trailing zeros)
   const formattedSpeed = speed.toFixed(2).replace(/\.?0+$/, "");
 
-  // Set badge text and color
-  chrome.action.setBadgeText({ text: formattedSpeed });
-
-  let color = "#4285F4"; // Default blue
+  let bgColor = "#4285F4";
   if (speed < 1.0) {
-    color = "#34A853"; // Green for slower speeds
+    bgColor = "#EA4335";
   } else if (speed > 1.0) {
-    color = "#EA4335"; // Red for faster speeds
+    bgColor = "#34A853";
   }
 
-  chrome.action.setBadgeBackgroundColor({ color: color });
+  chrome.action.setBadgeText({ text: formattedSpeed });
+  chrome.action.setBadgeBackgroundColor({ color: bgColor });
 }
