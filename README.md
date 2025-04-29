@@ -16,9 +16,9 @@ A Chrome extension that gives you precise control over video playback speed on a
 
 ### Chrome Web Store (Coming Soon)
 
-1. Download the extension from the [Chrome Web Store](#) (link to be added)
+<!-- 1. Download the extension from the [Chrome Web Store](#) (link to be added)
 2. Click "Add to Chrome" to install the extension
-3. The extension icon will appear in your browser toolbar
+3. The extension icon will appear in your browser toolbar -->
 
 ### Developer Mode (Load Unpacked)
 
