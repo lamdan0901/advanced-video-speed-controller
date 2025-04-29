@@ -44,8 +44,16 @@ h2 {
   color: #444;
 }
 
+summary {
+  font-size: 16px;
+  margin-top: 15px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
 .speed-control {
-  margin-bottom: 15px;
+  margin-block: 15px;
 }
 
 #speed-slider {
@@ -208,8 +216,8 @@ h2 {
 }
 
 .settings-section {
-  padding-top: 10px;
-  border-top: 1px solid #eee;
+  padding-block: 10px;
+  border-block: 1px solid #eee;
 }
 
 .setting {

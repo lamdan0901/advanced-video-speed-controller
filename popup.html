@@ -9,34 +9,8 @@
     <div class="container">
       <h1>Video Speed Controller</h1>
 
-      <div class="speed-control">
-        <label for="speed-slider"
-          >Speed: <span id="speed-value">1.0</span>x</label
-        >
-        <input
-          type="range"
-          id="speed-slider"
-          min="0.1"
-          max="5"
-          step="0.1"
-          value="1.0"
-        />
-
-        <div class="speed-buttons">
-          <button class="speed-btn" data-speed="0.9">0.9x</button>
-          <button class="speed-btn" data-speed="1.0">1.0x</button>
-          <button class="speed-btn" data-speed="1.1">1.1x</button>
-          <button class="speed-btn" data-speed="1.15">1.15x</button>
-          <button class="speed-btn" data-speed="1.2">1.2x</button>
-          <button class="speed-btn" data-speed="1.25">1.25x</button>
-          <button class="speed-btn" data-speed="1.3">1.3x</button>
-          <button class="speed-btn" data-speed="1.35">1.35x</button>
-          <button class="speed-btn" data-speed="1.5">1.5x</button>
-        </div>
-      </div>
-
-      <div class="preset-section">
-        <h2>Custom Presets</h2>
+      <details class="preset-section">
+        <summary>Custom Presets</summary>
         <div id="presets-container">
           <!-- Presets will be added here dynamically -->
         </div>
@@ -52,10 +26,10 @@
           />
           <button id="add-preset-btn">Add Preset</button>
         </div>
-      </div>
+      </details>
 
-      <div class="settings-section">
-        <h2>Settings</h2>
+      <details class="settings-section">
+        <summary>Settings</summary>
         <div class="setting">
           <label for="remember-speed">Remember speed for this site</label>
           <input type="checkbox" id="remember-speed" checked />
@@ -83,6 +57,32 @@
           <p>Shift + &uarr;: Increase speed</p>
           <p>Shift + &darr;: Decrease speed</p>
           <p>Shift + R: Reset to 1.0x</p>
+        </div>
+      </details>
+
+      <div class="speed-control">
+        <label for="speed-slider"
+          >Speed: <span id="speed-value">1.0</span>x</label
+        >
+        <input
+          type="range"
+          id="speed-slider"
+          min="0.1"
+          max="5"
+          step="0.1"
+          value="1.0"
+        />
+
+        <div class="speed-buttons">
+          <button class="speed-btn" data-speed="0.9">0.9x</button>
+          <button class="speed-btn" data-speed="1.0">1.0x</button>
+          <button class="speed-btn" data-speed="1.1">1.1x</button>
+          <button class="speed-btn" data-speed="1.15">1.15x</button>
+          <button class="speed-btn" data-speed="1.2">1.2x</button>
+          <button class="speed-btn" data-speed="1.25">1.25x</button>
+          <button class="speed-btn" data-speed="1.3">1.3x</button>
+          <button class="speed-btn" data-speed="1.35">1.35x</button>
+          <button class="speed-btn" data-speed="1.5">1.5x</button>
         </div>
       </div>
     </div>
