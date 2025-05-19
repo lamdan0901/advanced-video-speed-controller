@@ -431,30 +431,69 @@ function initializeVideoElement(video) {
   }
 }
 
-// Set up keyboard shortcuts
 function setupKeyboardShortcuts() {
   document.addEventListener("keydown", function (e) {
     if (siteDisabled || !keyboardShortcutsEnabled) return;
 
-    // Shift + Arrow Up: Increase speed
     if (e.shiftKey && e.key === "ArrowUp") {
       e.preventDefault();
       increaseSpeed();
-    }
-    // Shift + Arrow Down: Decrease speed
-    else if (e.shiftKey && e.key === "ArrowDown") {
+    } else if (e.shiftKey && e.key === "ArrowDown") {
       e.preventDefault();
       decreaseSpeed();
-    }
-    // Shift + R: Reset speed to 1.0x
-    else if (e.shiftKey && e.key === "r") {
+    } else if (e.shiftKey && e.key === "r") {
       e.preventDefault();
       resetSpeed();
+    } else if (e.ctrlKey && e.altKey && e.key === "d") {
+      e.preventDefault();
+      switchToPreviousSpeed();
+    } else if (e.ctrlKey && e.altKey && e.key === "s") {
+      e.preventDefault();
+      switchToNextSpeed();
     }
   });
 }
 
-// Increase the playback speed
+async function switchToPreviousSpeed() {
+  if (siteDisabled) return;
+  const presets = await getSpeedPresets();
+  const index = presets.indexOf(currentSpeed);
+  if (index > 0) {
+    currentSpeed = presets[index - 1];
+    applySpeedToAllVideos();
+    showSpeedIndicator();
+    updateSpeedDisplay();
+    showSpeedUpdateNotification(currentSpeed);
+    if (window.top === window.self) {
+      chrome.runtime.sendMessage({
+        action: "updateBadge",
+        speed: currentSpeed,
+      });
+    }
+    saveSpeed();
+  }
+}
+
+async function switchToNextSpeed() {
+  if (siteDisabled) return;
+  const presets = await getSpeedPresets();
+  const index = presets.indexOf(currentSpeed);
+  if (index >= 0 && index < presets.length - 1) {
+    currentSpeed = presets[index + 1];
+    applySpeedToAllVideos();
+    showSpeedIndicator();
+    updateSpeedDisplay();
+    showSpeedUpdateNotification(currentSpeed);
+    if (window.top === window.self) {
+      chrome.runtime.sendMessage({
+        action: "updateBadge",
+        speed: currentSpeed,
+      });
+    }
+    saveSpeed();
+  }
+}
+
 function increaseSpeed() {
   if (siteDisabled) return;
 
@@ -471,6 +510,7 @@ function increaseSpeed() {
 
     applySpeedToAllVideos();
     showSpeedIndicator();
+    updateSpeedDisplay();
 
     // Update badge in extension icon - only send message from top-level frame
     if (window.top === window.self) {
@@ -486,7 +526,6 @@ function increaseSpeed() {
   }
 }
 
-// Decrease the playback speed
 function decreaseSpeed() {
   if (siteDisabled) return;
 
@@ -503,6 +542,7 @@ function decreaseSpeed() {
 
     applySpeedToAllVideos();
     showSpeedIndicator();
+    updateSpeedDisplay();
 
     // Update badge in extension icon - only send message from top-level frame
     if (window.top === window.self) {
@@ -518,7 +558,6 @@ function decreaseSpeed() {
   }
 }
 
-// Reset speed to 1.0x
 function resetSpeed() {
   if (siteDisabled) return;
 
@@ -872,58 +911,30 @@ window.addEventListener("message", function (event) {
   }
 });
 
-// Add CSS for the extension
-const style = document.createElement("style");
-style.textContent = `
-  #video-speed-indicator {
-    position: fixed;
-    top: 50px;
-    right: 50px;
-    background-color: rgba(0, 0, 0, 0.7);
-    color: white;
-    padding: 10px 15px;
-    border-radius: 5px;
-    font-family: Arial, sans-serif;
-    font-size: 16px;
-    z-index: 9999;
-    transition: opacity 0.3s;
-    opacity: 0;
-    pointer-events: none;
-  }
-  .extension-speed-menu-portal {
-    position: absolute;
-    background-color: rgba(0, 0, 0, 0.9);
-    color: white;
-    padding: 10px;
-    border-radius: 5px;
-    font-family: Arial, sans-serif;
-    font-size: 14px;
-    z-index: 9999;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s;
-  }
-  .extension-speed-menu-portal.visible {
-    opacity: 1;
-    pointer-events: auto;
-  }
-  .extension-speed-item {
-    padding: 5px 10px;
-    cursor: pointer;
-  }
-  .extension-speed-item.active {
-    background-color: rgba(255, 255, 255, 0.2);
-  }
-  .extension-speed-separator {
-    height: 1px;
-    background-color: rgba(255, 255, 255, 0.3);
-    margin: 5px 0;
-  }
-`;
-document.head.appendChild(style);
+function showSpeedUpdateNotification(speed) {
+  const notification = document.createElement("div");
+  notification.textContent = `Speed: ${speed.toFixed(2)}x`;
+  notification.style.position = "fixed";
+  notification.style.top = "10px";
+  notification.style.right = "10px";
+  notification.style.backgroundColor = "rgba(0, 0, 0, 0.8)";
+  notification.style.color = "white";
+  notification.style.padding = "10px 15px";
+  notification.style.borderRadius = "5px";
+  notification.style.fontSize = "22px";
+  notification.style.zIndex = "9999";
+  notification.style.transition = "opacity 0.5s";
+  document.body.appendChild(notification);
 
-// Initialize when the page is ready
+  // Fade out and remove the notification after 2 seconds
+  setTimeout(() => {
+    notification.style.opacity = "0";
+    setTimeout(() => {
+      notification.remove();
+    }, 500);
+  }, 2000);
+}
+
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initialize);
 } else {
