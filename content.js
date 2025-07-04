@@ -41,6 +41,18 @@ async function getSpeedPresets() {
 function initialize() {
   const hostname = window.location.hostname;
 
+  // Hide specific elements on rophim.me domain
+  if (hostname === "www.rophim.me" || hostname === "rophim.me") {
+    // Add class to body to enable hiding styles
+    document.body.classList.add("rophim-hide-elements");
+
+    // Also hide any existing elements immediately
+    hideRophimElements();
+
+    // Set up observer for dynamically loaded content
+    setupRophimElementObserver();
+  }
+
   // Check if site is disabled - only attempt if in the top-level frame
   if (window.top === window.self) {
     try {
@@ -933,6 +945,71 @@ function showSpeedUpdateNotification(speed) {
       notification.remove();
     }, 500);
   }, 2000);
+}
+
+// Function to hide .sspp-area and .sspp-modal elements on rophim.me
+function hideRophimElements() {
+  const ssppAreas = document.querySelectorAll(".sspp-area");
+  const ssppModals = document.querySelectorAll(".sspp-modal");
+
+  ssppAreas.forEach((element) => {
+    element.style.display = "none";
+    element.style.visibility = "hidden";
+    element.style.opacity = "0";
+    element.style.pointerEvents = "none";
+  });
+
+  ssppModals.forEach((element) => {
+    element.style.display = "none";
+    element.style.visibility = "hidden";
+    element.style.opacity = "0";
+    element.style.pointerEvents = "none";
+  });
+}
+
+// Function to set up observer for dynamically loaded rophim elements
+function setupRophimElementObserver() {
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === "childList") {
+        // Check newly added nodes for sspp elements
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            // Check if the added node itself has the classes
+            if (
+              node.classList &&
+              (node.classList.contains("sspp-area") ||
+                node.classList.contains("sspp-modal"))
+            ) {
+              node.style.display = "none";
+              node.style.visibility = "hidden";
+              node.style.opacity = "0";
+              node.style.pointerEvents = "none";
+            }
+
+            // Check if any child elements have the classes
+            const ssppElements =
+              node.querySelectorAll &&
+              node.querySelectorAll(".sspp-area, .sspp-modal");
+            if (ssppElements) {
+              ssppElements.forEach((element) => {
+                element.style.display = "none";
+                element.style.visibility = "hidden";
+                element.style.opacity = "0";
+                element.style.pointerEvents = "none";
+              });
+            }
+          }
+        });
+      }
+    });
+  });
+
+  // Start observing for changes in the document
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
 }
 
 if (document.readyState === "loading") {
