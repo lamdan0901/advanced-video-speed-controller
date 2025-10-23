@@ -19,6 +19,9 @@
 .extension-speed-selector {
   position: relative;
   height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-family: "YouTube Noto", Roboto, Arial, Helvetica, sans-serif;
 }
 
@@ -26,26 +29,26 @@
   color: #fff;
   font-size: 14px;
   cursor: pointer;
-  padding: 0 8px;
+  padding: 0 12px;
   height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  border-radius: 2px;
+  border-radius: 8px;
   user-select: none;
-}
-
-.extension-speed-display:hover {
-  background: rgba(255, 255, 255, 0.1);
+  line-height: 1;
 }
 
 /* Portal-style menu at root level */
 .extension-speed-menu-portal {
   position: fixed;
   z-index: 9999999;
-  background: #0f0f0f;
-  border-radius: 8px;
+  background: rgba(15, 15, 15, 0.75);
+  border-radius: 14px;
   padding: 8px 0;
   min-width: 120px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.1s, visibility 0.1s;
