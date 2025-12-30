@@ -9,6 +9,9 @@ let videos = [];
 let speedSelector = null;
 let youtubeControls = null;
 let menuPortal = null;
+let fullscreenControl = null;
+let fullscreenHideSession = false;
+let fullscreenHideSite = false;
 
 // Function to get speed presets from chrome storage
 async function getSpeedPresets() {
@@ -124,6 +127,9 @@ function initialize() {
   if (window.location.hostname === "www.youtube.com") {
     setupYouTubeSpeedSelector();
   }
+
+  // Setup fullscreen speed control
+  setupFullscreenSpeedControl();
 }
 
 // Reset all videos to normal speed (1.0x)
@@ -866,6 +872,7 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
 
     // Update YouTube speed selector when speed changes
     updateSpeedDisplay();
+    updateFullscreenSpeedDisplay();
   } else if (message.action === "updateSettings") {
     if (message.keyboardShortcuts !== undefined) {
       keyboardShortcutsEnabled = message.keyboardShortcuts;
@@ -888,6 +895,20 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
           menuPortal.remove();
           menuPortal = null;
         }
+      }
+    }
+  } else if (message.action === "updateFullscreenSettings") {
+    // Handle toggle from popup
+    if (message.disabled !== undefined) {
+      fullscreenHideSite = message.disabled;
+      // Re-evaluate visibility
+      const fsElement =
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement;
+      if (fsElement) {
+        toggleFullscreenControl(!fullscreenHideSite);
       }
     }
   }
@@ -1010,6 +1031,238 @@ function setupRophimElementObserver() {
     childList: true,
     subtree: true,
   });
+}
+
+// Fullscreen Speed Control Logic
+
+function setupFullscreenSpeedControl() {
+  // Check if disabled for this site
+  const hostname = window.location.hostname;
+  chrome.storage.sync.get(["fullscreenDisabledSites"], function (data) {
+    const disabledSites = data.fullscreenDisabledSites || {};
+    fullscreenHideSite = !!disabledSites[hostname];
+  });
+
+  // Listen for fullscreen changes
+  document.addEventListener("fullscreenchange", handleFullscreenChange);
+  document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+  document.addEventListener("mozfullscreenchange", handleFullscreenChange);
+  document.addEventListener("msfullscreenchange", handleFullscreenChange);
+}
+
+function handleFullscreenChange() {
+  if (
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    document.mozFullScreenElement ||
+    document.msFullscreenElement
+  ) {
+    // Entered fullscreen
+    // Reset session hide on entry.
+    fullscreenHideSession = false;
+    toggleFullscreenControl(true);
+  } else {
+    // Exited fullscreen
+    toggleFullscreenControl(false);
+  }
+}
+
+function toggleFullscreenControl(show) {
+  if (!show) {
+    if (fullscreenControl) {
+      fullscreenControl.remove();
+      fullscreenControl = null;
+    }
+    return;
+  }
+
+  // Check visibility flags
+  if (fullscreenHideSite || fullscreenHideSession) {
+    return;
+  }
+
+  const fsElement =
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    document.mozFullScreenElement ||
+    document.msFullscreenElement;
+  if (!fsElement) return;
+
+  // Create if not exists
+  if (!fullscreenControl) {
+    createFullscreenControl();
+  }
+
+  // Append to fullscreen element
+  fsElement.appendChild(fullscreenControl);
+  updateFullscreenSpeedDisplay();
+}
+
+function createFullscreenControl() {
+  fullscreenControl = document.createElement("div");
+  fullscreenControl.className = "fs-speed-control";
+
+  // Prevent interactions from bubbling to video player
+  fullscreenControl.addEventListener("click", (e) => e.stopPropagation());
+  fullscreenControl.addEventListener("dblclick", (e) => e.stopPropagation());
+  fullscreenControl.addEventListener("mousedown", (e) => e.stopPropagation());
+
+  // Main wrapper
+  const wrapper = document.createElement("div");
+  wrapper.className = "fs-main-wrapper";
+
+  // Speed Display
+  const speedDisplay = document.createElement("div");
+  speedDisplay.className = "fs-speed-display";
+
+  const speedText = document.createElement("span");
+  speedText.className = "fs-speed-text";
+  speedText.textContent = currentSpeed + "x";
+  speedDisplay.appendChild(speedText);
+
+  // Speed Menu (Presets)
+  const presetsMenu = document.createElement("div");
+  presetsMenu.className = "fs-presets-menu";
+
+  // Populate presets
+  getSpeedPresets().then((presets) => {
+    presets.forEach((speed) => {
+      const item = document.createElement("div");
+      item.className = "fs-menu-item";
+      // Create text span for alignment
+      const textSpan = document.createElement("span");
+      textSpan.textContent = speed + "x";
+      item.appendChild(textSpan);
+
+      if (Math.abs(speed - currentSpeed) < 0.01) {
+        item.classList.add("active");
+        // Add checkmark explicitly for better control
+        const check = document.createElement("span");
+        check.className = "fs-check";
+        check.textContent = "✓";
+        item.appendChild(check);
+      }
+
+      item.addEventListener("click", () => {
+        currentSpeed = speed;
+        applySpeedToAllVideos();
+        updateFullscreenSpeedDisplay();
+        showSpeedIndicator(); // Optional: show the standard center indicator too
+        saveSpeed();
+      });
+      presetsMenu.appendChild(item);
+    });
+  });
+
+  // Scroll to active item when hovering
+  speedDisplay.addEventListener("mouseenter", () => {
+    // Small delay to ensure display is visible
+    setTimeout(() => {
+      const activeItem = presetsMenu.querySelector(".fs-menu-item.active");
+      if (activeItem) {
+        activeItem.scrollIntoView({ block: "center", behavior: "auto" });
+      }
+    }, 0);
+  });
+
+  // Hide Button
+  const hideBtn = document.createElement("div");
+  hideBtn.className = "fs-hide-btn";
+  hideBtn.innerHTML = "&#10005;"; // X icon
+
+  // Hide Menu
+  const hideMenu = document.createElement("div");
+  hideMenu.className = "fs-hide-menu";
+
+  const hideSessionOption = document.createElement("div");
+  hideSessionOption.className = "fs-menu-item";
+  hideSessionOption.textContent = "Hide for this session";
+  hideSessionOption.addEventListener("click", () => {
+    fullscreenHideSession = true;
+    toggleFullscreenControl(false);
+  });
+
+  const hideSiteOption = document.createElement("div");
+  hideSiteOption.className = "fs-menu-item";
+  hideSiteOption.textContent = "Hide on this site";
+  hideSiteOption.addEventListener("click", () => {
+    fullscreenHideSite = true;
+    toggleFullscreenControl(false);
+
+    // Save to storage
+    const hostname = window.location.hostname;
+    chrome.storage.sync.get(["fullscreenDisabledSites"], function (data) {
+      const disabledSites = data.fullscreenDisabledSites || {};
+      disabledSites[hostname] = true;
+      chrome.storage.sync.set({ fullscreenDisabledSites: disabledSites });
+    });
+  });
+
+  hideMenu.appendChild(hideSessionOption);
+  hideMenu.appendChild(hideSiteOption);
+
+  // Assemble
+  speedDisplay.appendChild(presetsMenu); // Nesting menu inside display for hover logic
+  hideBtn.appendChild(hideMenu); // Nesting menu inside button for click logic
+
+  wrapper.appendChild(speedDisplay);
+  wrapper.appendChild(hideBtn);
+  fullscreenControl.appendChild(wrapper);
+
+  // Hide button click to toggle its menu
+  hideBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    hideMenu.classList.toggle("visible");
+  });
+
+  // Close hide menu when clicking outside
+  document.addEventListener("click", (e) => {
+    if (!hideBtn.contains(e.target)) {
+      hideMenu.classList.remove("visible");
+    }
+  });
+}
+
+function updateFullscreenSpeedDisplay() {
+  if (fullscreenControl) {
+    const display = fullscreenControl.querySelector(".fs-speed-display");
+    if (display) {
+      // Update text only
+      const textSpan = display.querySelector(".fs-speed-text");
+      if (textSpan) {
+        textSpan.textContent = currentSpeed + "x";
+      }
+      const menu = display.querySelector(".fs-presets-menu");
+
+      // Update active state in presets menu
+      if (menu) {
+        const items = menu.querySelectorAll(".fs-menu-item");
+        items.forEach((item) => {
+          let speedVal = 1.0;
+          const speedSpan = item.querySelector("span");
+          if (speedSpan && !speedSpan.classList.contains("fs-check")) {
+            speedVal = parseFloat(speedSpan.textContent);
+          } else {
+            speedVal = parseFloat(item.textContent);
+          }
+
+          if (Math.abs(speedVal - currentSpeed) < 0.01) {
+            item.classList.add("active");
+            if (!item.querySelector(".fs-check")) {
+              const check = document.createElement("span");
+              check.className = "fs-check";
+              check.textContent = "✓";
+              item.appendChild(check);
+            }
+          } else {
+            item.classList.remove("active");
+            const check = item.querySelector(".fs-check");
+            if (check) check.remove();
+          }
+        });
+      }
+    }
+  }
 }
 
 if (document.readyState === "loading") {

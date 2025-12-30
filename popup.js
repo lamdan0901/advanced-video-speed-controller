@@ -18,6 +18,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const youtubeSpeedSelectorCheckbox = document.getElementById(
     "youtube-speed-selector"
   );
+  const hideFullscreenCheckbox = document.getElementById("hide-fullscreen");
 
   let currentSpeed = 1.0;
   let customPresets = [];
@@ -132,6 +133,7 @@ document.addEventListener("DOMContentLoaded", function () {
             "disabledSites",
             "rememberSpeedEnabled", // Add this to track remember speed globally
             "youtubeSpeedSelectorEnabled", // Add this to track YouTube speed selector
+            "fullscreenDisabledSites", // Add this to track disabled fullscreen sites
           ],
           function (data) {
             if (chrome.runtime.lastError) {
@@ -147,6 +149,10 @@ document.addEventListener("DOMContentLoaded", function () {
             // Default YouTube speed selector to true if not set
             youtubeSpeedSelectorCheckbox.checked =
               data.youtubeSpeedSelectorEnabled !== false;
+
+            // Fullscreen disabled state
+            const fsDisabledSites = data.fullscreenDisabledSites || {};
+            hideFullscreenCheckbox.checked = !!fsDisabledSites[currentHostname];
 
             // Always try to load site-specific speed first if site is not disabled and remember speed is enabled
             let siteSpeedFound = false;
@@ -321,6 +327,33 @@ document.addEventListener("DOMContentLoaded", function () {
         chrome.tabs.sendMessage(tabs[0].id, {
           action: "updateSettings",
           youtubeSpeedSelectorEnabled: youtubeSpeedSelectorCheckbox.checked,
+        });
+      }
+    });
+  });
+
+  hideFullscreenCheckbox.addEventListener("change", function () {
+    if (!currentHostname) return;
+
+    const shouldHide = this.checked;
+
+    // Update storage
+    chrome.storage.sync.get(["fullscreenDisabledSites"], function (data) {
+      const disabledSites = data.fullscreenDisabledSites || {};
+      if (shouldHide) {
+        disabledSites[currentHostname] = true;
+      } else {
+        delete disabledSites[currentHostname];
+      }
+      chrome.storage.sync.set({ fullscreenDisabledSites: disabledSites });
+    });
+
+    // Notify content script
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          action: "updateFullscreenSettings",
+          disabled: shouldHide,
         });
       }
     });
