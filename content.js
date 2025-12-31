@@ -214,6 +214,12 @@ function applySpeedToVideos(videos) {
 // Use Shadow DOM for speed controls
 function createSpeedIndicator() {
   if (!speedIndicator) {
+    // Safety check for document.body
+    if (!document.body) {
+      setTimeout(createSpeedIndicator, 200);
+      return;
+    }
+
     speedIndicator = document.createElement("div");
     speedIndicator.id = "video-speed-indicator";
 
@@ -911,6 +917,8 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
         toggleFullscreenControl(!fullscreenHideSite);
       }
     }
+  } else if (message.action === "getSpeed") {
+    sendResponse({ speed: currentSpeed, disabled: siteDisabled });
   }
 });
 

@@ -30,35 +30,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Update badge for the current active tab
 function updateBadgeForCurrentTab() {
   chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-    if (tabs[0] && tabs[0].url && !tabs[0].url.startsWith("chrome://")) {
-      const currentUrl = new URL(tabs[0].url);
-      const hostname = currentUrl.hostname;
+    if (tabs[0] && tabs[0].id) {
+      // Check for chrome:// URLs first
+      if (tabs[0].url && tabs[0].url.startsWith("chrome://")) {
+        chrome.action.setBadgeText({ text: "" });
+        return;
+      }
 
-      chrome.storage.sync.get(
-        ["disabledSites", "siteSettings", "rememberSpeedEnabled"],
-        function (data) {
-          const disabledSites = data.disabledSites || {};
-          const isDisabled = !!disabledSites[hostname];
-
-          if (isDisabled) {
-            chrome.action.setBadgeText({ text: "OFF" });
-            chrome.action.setBadgeBackgroundColor({ color: "#888888" });
+      // Try to get real status from content script
+      chrome.tabs.sendMessage(
+        tabs[0].id,
+        { action: "getSpeed" },
+        (response) => {
+          if (!chrome.runtime.lastError && response) {
+            updateBadge(response.speed, response.disabled);
           } else {
-            // Site is enabled, determine speed to show
-            let speedToShow = 1.0; // Default speed
-
-            // Use site-specific speed ONLY if remember speed is enabled
-            if (
-              data.rememberSpeedEnabled !== false && // Check if remember speed is enabled (default true)
-              data.siteSettings &&
-              data.siteSettings[hostname]
-            ) {
-              speedToShow = data.siteSettings[hostname];
-            } else {
-              // For new sites or when remember speed is off, always use 1.0
-            }
-
-            updateBadge(speedToShow, false);
+            // Fallback to storage if content script not ready or error
+            updateBadgeFromStorage(tabs[0]);
           }
         }
       );
@@ -66,10 +54,52 @@ function updateBadgeForCurrentTab() {
   });
 }
 
+function updateBadgeFromStorage(tab) {
+  if (!tab || !tab.url) return;
+  try {
+    const currentUrl = new URL(tab.url);
+    const hostname = currentUrl.hostname;
+
+    chrome.storage.sync.get(
+      ["disabledSites", "siteSettings", "rememberSpeedEnabled"],
+      function (data) {
+        const disabledSites = data.disabledSites || {};
+        const isDisabled = !!disabledSites[hostname];
+
+        if (isDisabled) {
+          updateBadge(1.0, true); // function updateBadge handles the "OFF" text based on disabled param? No, wait.
+        } else {
+          // Site is enabled, determine speed to show
+          let speedToShow = 1.0; // Default speed
+
+          // Use site-specific speed ONLY if remember speed is enabled
+          if (
+            data.rememberSpeedEnabled !== false && // Check if remember speed is enabled (default true)
+            data.siteSettings &&
+            data.siteSettings[hostname]
+          ) {
+            speedToShow = data.siteSettings[hostname];
+          }
+
+          updateBadge(speedToShow, false);
+        }
+      }
+    );
+  } catch (e) {}
+}
+
 // Update the badge with the current speed
-function updateBadge(speed) {
+function updateBadge(speed, disabled) {
+  if (disabled) {
+    chrome.action.setBadgeText({ text: "OFF" });
+    chrome.action.setBadgeBackgroundColor({ color: "#888888" });
+    return;
+  }
+
   // Format the speed value (remove trailing zeros)
-  const formattedSpeed = speed.toFixed(2).replace(/\.?0+$/, "");
+  const formattedSpeed = parseFloat(speed)
+    .toFixed(2)
+    .replace(/\.?0+$/, "");
 
   let bgColor = "#4285F4";
   if (speed < 1.0) {
