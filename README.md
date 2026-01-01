@@ -2,6 +2,61 @@
 
 A Chrome extension that gives you precise control over video playback speed on any website.
 
+## Project Overview
+
+Advanced Video Speed Controller is a Chrome extension (Manifest V3) that provides comprehensive control over HTML5 video playback speed across all websites. The extension is built with vanilla JavaScript, HTML, and CSS, and follows modern Chrome extension best practices.
+
+### Architecture
+
+The extension consists of several key components that work together to provide seamless video speed control:
+
+1. **Background Service Worker** (`background.js`)
+   - Manages extension lifecycle and cross-tab communication
+   - Listens for tab activation and update events
+   - Handles runtime messages between components
+   - Maintains extension badge state with current playback speed
+   - Synchronizes state using Chrome Storage API
+
+2. **Content Script** (`content.js`)
+   - Injected into all web pages
+   - Monitors all video elements (including iframes) using MutationObserver
+   - Enforces playback rate changes across all videos
+   - Handles keyboard shortcuts for speed control
+   - Displays visual speed indicators using shadow DOM
+   - Provides YouTube-specific integration
+   - Manages fullscreen speed controller UI
+
+3. **Popup UI** (`popup.html`, `popup.css`, `popup.js`)
+   - User interface for speed control and settings
+   - Speed slider and preset buttons
+   - Custom preset management (CRUD operations)
+   - Per-site enable/disable toggles
+   - Configuration for keyboard shortcuts and YouTube integration
+   - Persists settings to chrome.storage.sync
+
+4. **Styling** (`content.css`)
+   - Styles for in-page widgets and indicators
+   - Site-specific CSS overrides
+   - Responsive design for different video player layouts
+
+### Data Flow
+
+1. User interacts with popup UI or uses keyboard shortcuts
+2. Content script receives commands and applies speed changes to video elements
+3. Background service worker updates extension badge to reflect current speed
+4. Settings and preferences are synchronized across tabs using chrome.storage
+5. Visual feedback is provided through on-screen indicators
+
+### Key Technical Features
+
+- **Cross-site compatibility**: Works with any website containing HTML5 video elements
+- **Iframe support**: Detects and controls videos embedded in iframes
+- **State persistence**: Remembers speed settings per site
+- **Real-time synchronization**: Updates across tabs instantly
+- **YouTube integration**: Special controls for YouTube's player interface
+- **Accessibility**: Keyboard shortcuts and visual indicators
+- **Performance optimized**: Uses MutationObserver for efficient DOM monitoring
+
 ## Features
 
 - **Precise Speed Control**: Adjust video playback speed from 0.1x to 5.0x with a slider or preset buttons
