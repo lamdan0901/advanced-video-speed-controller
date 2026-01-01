@@ -478,23 +478,50 @@ function setupKeyboardShortcuts() {
   });
 }
 
+function setCurrentSpeed(nextSpeed, options = {}) {
+  if (siteDisabled) return;
+
+  const {
+    showIndicator = true,
+    showNotification = false,
+    save = true,
+    updateBadge = true,
+  } = options;
+
+  currentSpeed = nextSpeed;
+  applySpeedToAllVideos();
+
+  if (showIndicator) {
+    showSpeedIndicator();
+  }
+
+  updateSpeedDisplay();
+  updateFullscreenSpeedDisplay();
+
+  if (showNotification) {
+    showSpeedUpdateNotification(currentSpeed);
+  }
+
+  if (updateBadge && window.top === window.self) {
+    try {
+      chrome.runtime.sendMessage({
+        action: "updateBadge",
+        speed: currentSpeed,
+      });
+    } catch (e) {}
+  }
+
+  if (save) {
+    saveSpeed();
+  }
+}
+
 async function switchToPreviousSpeed() {
   if (siteDisabled) return;
   const presets = await getSpeedPresets();
   const index = presets.indexOf(currentSpeed);
   if (index > 0) {
-    currentSpeed = presets[index - 1];
-    applySpeedToAllVideos();
-    showSpeedIndicator();
-    updateSpeedDisplay();
-    showSpeedUpdateNotification(currentSpeed);
-    if (window.top === window.self) {
-      chrome.runtime.sendMessage({
-        action: "updateBadge",
-        speed: currentSpeed,
-      });
-    }
-    saveSpeed();
+    setCurrentSpeed(presets[index - 1], { showNotification: true });
   }
 }
 
@@ -503,18 +530,7 @@ async function switchToNextSpeed() {
   const presets = await getSpeedPresets();
   const index = presets.indexOf(currentSpeed);
   if (index >= 0 && index < presets.length - 1) {
-    currentSpeed = presets[index + 1];
-    applySpeedToAllVideos();
-    showSpeedIndicator();
-    updateSpeedDisplay();
-    showSpeedUpdateNotification(currentSpeed);
-    if (window.top === window.self) {
-      chrome.runtime.sendMessage({
-        action: "updateBadge",
-        speed: currentSpeed,
-      });
-    }
-    saveSpeed();
+    setCurrentSpeed(presets[index + 1], { showNotification: true });
   }
 }
 
@@ -532,21 +548,7 @@ function increaseSpeed() {
       currentSpeed = Math.min(Math.round((currentSpeed + 1) * 1) / 1, 5);
     }
 
-    applySpeedToAllVideos();
-    showSpeedIndicator();
-    updateSpeedDisplay();
-
-    // Update badge in extension icon - only send message from top-level frame
-    if (window.top === window.self) {
-      try {
-        chrome.runtime.sendMessage({
-          action: "updateBadge",
-          speed: currentSpeed,
-        });
-      } catch (e) {}
-    }
-
-    saveSpeed();
+    setCurrentSpeed(currentSpeed);
   }
 }
 
@@ -564,42 +566,14 @@ function decreaseSpeed() {
       currentSpeed = Math.max(Math.round((currentSpeed - 1) * 1) / 1, 3);
     }
 
-    applySpeedToAllVideos();
-    showSpeedIndicator();
-    updateSpeedDisplay();
-
-    // Update badge in extension icon - only send message from top-level frame
-    if (window.top === window.self) {
-      try {
-        chrome.runtime.sendMessage({
-          action: "updateBadge",
-          speed: currentSpeed,
-        });
-      } catch (e) {}
-    }
-
-    saveSpeed();
+    setCurrentSpeed(currentSpeed);
   }
 }
 
 function resetSpeed() {
   if (siteDisabled) return;
 
-  currentSpeed = 1.0;
-  applySpeedToAllVideos();
-  showSpeedIndicator();
-
-  // Update badge in extension icon - only send message from top-level frame
-  if (window.top === window.self) {
-    try {
-      chrome.runtime.sendMessage({
-        action: "updateBadge",
-        speed: currentSpeed,
-      });
-    } catch (e) {}
-  }
-
-  saveSpeed();
+  setCurrentSpeed(1.0);
 }
 
 // Save the current speed
@@ -809,19 +783,7 @@ function createSpeedMenuItem(speed) {
 
   item.addEventListener("click", (e) => {
     e.stopPropagation();
-    currentSpeed = speed;
-    updateSpeedDisplay();
-    applySpeedToAllVideos();
-    showSpeedIndicator();
-    saveSpeed();
-
-    // Update extension badge immediately
-    if (window.top === window.self) {
-      chrome.runtime.sendMessage({
-        action: "updateBadge",
-        speed: currentSpeed,
-      });
-    }
+    setCurrentSpeed(speed);
 
     // Hide menu after selection
     if (menuPortal) {
@@ -860,25 +822,17 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
           } else {
             currentSpeed = 1.0;
           }
-          applySpeedToAllVideos();
-          showSpeedIndicator();
+          setCurrentSpeed(currentSpeed, { save: false });
         }
       );
     }
   } else if (message.action === "setSpeed" && !siteDisabled) {
-    currentSpeed = message.speed;
-    applySpeedToAllVideos();
-    showSpeedIndicator();
-
-    // Save site-specific speed if enabled
     if (message.rememberSpeed) {
       rememberSpeedEnabled = true;
-      saveSpeed();
+      setCurrentSpeed(message.speed, { save: true });
+    } else {
+      setCurrentSpeed(message.speed, { save: false });
     }
-
-    // Update YouTube speed selector when speed changes
-    updateSpeedDisplay();
-    updateFullscreenSpeedDisplay();
   } else if (message.action === "updateSettings") {
     if (message.keyboardShortcuts !== undefined) {
       keyboardShortcutsEnabled = message.keyboardShortcuts;
@@ -1152,11 +1106,7 @@ function createFullscreenControl() {
       }
 
       item.addEventListener("click", () => {
-        currentSpeed = speed;
-        applySpeedToAllVideos();
-        updateFullscreenSpeedDisplay();
-        showSpeedIndicator(); // Optional: show the standard center indicator too
-        saveSpeed();
+        setCurrentSpeed(speed);
       });
       presetsMenu.appendChild(item);
     });
