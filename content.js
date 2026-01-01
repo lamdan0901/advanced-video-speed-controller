@@ -1105,11 +1105,18 @@ function createFullscreenControl() {
         item.appendChild(check);
       }
 
-      item.addEventListener("click", () => {
+      item.addEventListener("click", (e) => {
+        e.stopPropagation();
         setCurrentSpeed(speed);
+        presetsMenu.classList.add("force-hidden");
       });
       presetsMenu.appendChild(item);
     });
+  });
+
+  // Reset force-hidden state when mouse enters the control again
+  speedDisplay.addEventListener("mouseenter", () => {
+    presetsMenu.classList.remove("force-hidden");
   });
 
   // Scroll to active item when hovering

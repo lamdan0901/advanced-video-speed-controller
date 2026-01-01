@@ -185,6 +185,12 @@
   visibility: visible;
 }
 
+.fs-presets-menu.force-hidden {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 /* Hide Menu (Click) */
 .fs-hide-menu {
   position: absolute;
