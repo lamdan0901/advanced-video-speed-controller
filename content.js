@@ -44,6 +44,12 @@ async function getSpeedPresets() {
 function initialize() {
   const hostname = window.location.hostname;
 
+  // Apply custom styles for domains containing "ophim"
+  if (hostname.includes("ophim")) {
+    applyOphimVideoPlayerStyles();
+    setupOphimVideoPlayerObserver();
+  }
+
   // Hide specific elements on rophim.me domain
   if (hostname === "www.rophim.me" || hostname === "rophim.me") {
     // Add class to body to enable hiding styles
@@ -993,6 +999,80 @@ function setupRophimElementObserver() {
     childList: true,
     subtree: true,
   });
+}
+
+// Function to apply custom styles to ophim video player elements
+function applyOphimVideoPlayerStyles() {
+  // Find all elements with aria-label="Video player container"
+  const videoContainers = document.querySelectorAll('[aria-label="Video player container"]');
+  
+  videoContainers.forEach((container) => {
+    // Get all sibling elements
+    const parent = container.parentNode;
+    if (parent) {
+      const siblings = Array.from(parent.children).filter(
+        (child) => child !== container
+      );
+      
+      // Style each sibling to have width: 12rem
+      siblings.forEach((sibling) => {
+        sibling.style.width = "12rem";
+        
+        // Find child element with classnames "grid grid-cols-4 gap-2"
+        const gridElement = sibling.querySelector(".grid.grid-cols-4.gap-2");
+        if (gridElement) {
+          // Style the grid element
+          gridElement.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
+        }
+      });
+    }
+  });
+}
+
+// Function to set up observer for dynamically loaded ophim video player elements
+function setupOphimVideoPlayerObserver() {
+  const observer = new MutationObserver((mutations) => {
+    let shouldApplyStyles = false;
+    
+    mutations.forEach((mutation) => {
+      if (mutation.type === "childList") {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            // Check if the added node or its children contain video player containers
+            if (
+              node.hasAttribute &&
+              node.getAttribute("aria-label") === "Video player container"
+            ) {
+              shouldApplyStyles = true;
+            }
+            
+            const videoContainers = node.querySelectorAll
+              ? node.querySelectorAll('[aria-label="Video player container"]')
+              : [];
+            if (videoContainers.length > 0) {
+              shouldApplyStyles = true;
+            }
+          }
+        });
+      }
+    });
+    
+    if (shouldApplyStyles) {
+      // Small delay to ensure DOM is fully updated
+      setTimeout(() => {
+        applyOphimVideoPlayerStyles();
+      }, 100);
+    }
+  });
+
+  // Start observing for changes in the document
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
+  
+  // Apply styles immediately in case elements are already present
+  applyOphimVideoPlayerStyles();
 }
 
 // Fullscreen Speed Control Logic
