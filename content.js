@@ -12,6 +12,7 @@ let menuPortal = null;
 let fullscreenControl = null;
 let fullscreenHideSession = false;
 let fullscreenHideSite = false;
+let showOutsideFullscreenEnabled = false;
 
 // Function to get speed presets from chrome storage
 async function getSpeedPresets() {
@@ -843,6 +844,10 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
     if (message.keyboardShortcuts !== undefined) {
       keyboardShortcutsEnabled = message.keyboardShortcuts;
     }
+    if (message.showOutsideFullscreenEnabled !== undefined) {
+      showOutsideFullscreenEnabled = message.showOutsideFullscreenEnabled;
+      updateFullscreenControlVisibility();
+    }
     if (
       message.youtubeSpeedSelectorEnabled !== undefined &&
       window.location.hostname === "www.youtube.com"
@@ -867,15 +872,7 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
     // Handle toggle from popup
     if (message.disabled !== undefined) {
       fullscreenHideSite = message.disabled;
-      // Re-evaluate visibility
-      const fsElement =
-        document.fullscreenElement ||
-        document.webkitFullscreenElement ||
-        document.mozFullScreenElement ||
-        document.msFullscreenElement;
-      if (fsElement) {
-        toggleFullscreenControl(!fullscreenHideSite);
-      }
+      updateFullscreenControlVisibility();
     }
   } else if (message.action === "getSpeed") {
     sendResponse({ speed: currentSpeed, disabled: siteDisabled });
@@ -1080,10 +1077,15 @@ function setupOphimVideoPlayerObserver() {
 function setupFullscreenSpeedControl() {
   // Check if disabled for this site
   const hostname = window.location.hostname;
-  chrome.storage.sync.get(["fullscreenDisabledSites"], function (data) {
+  chrome.storage.sync.get(
+    ["fullscreenDisabledSites", "showOutsideFullscreenEnabled"],
+    function (data) {
     const disabledSites = data.fullscreenDisabledSites || {};
     fullscreenHideSite = !!disabledSites[hostname];
-  });
+      showOutsideFullscreenEnabled = data.showOutsideFullscreenEnabled === true;
+      updateFullscreenControlVisibility();
+    }
+  );
 
   // Listen for fullscreen changes
   document.addEventListener("fullscreenchange", handleFullscreenChange);
@@ -1093,24 +1095,30 @@ function setupFullscreenSpeedControl() {
 }
 
 function handleFullscreenChange() {
-  if (
+  if (getFullscreenElement()) {
+    // Entered fullscreen
+    // Reset session hide on entry.
+    fullscreenHideSession = false;
+  }
+  updateFullscreenControlVisibility();
+}
+
+function getFullscreenElement() {
+  return (
     document.fullscreenElement ||
     document.webkitFullscreenElement ||
     document.mozFullScreenElement ||
     document.msFullscreenElement
-  ) {
-    // Entered fullscreen
-    // Reset session hide on entry.
-    fullscreenHideSession = false;
-    toggleFullscreenControl(true);
-  } else {
-    // Exited fullscreen
-    toggleFullscreenControl(false);
-  }
+  );
 }
 
-function toggleFullscreenControl(show) {
-  if (!show) {
+function updateFullscreenControlVisibility() {
+  const fullscreenElement = getFullscreenElement();
+  const canShowOutsideFullscreen =
+    showOutsideFullscreenEnabled && window.top === window.self;
+  const shouldShow = !!fullscreenElement || canShowOutsideFullscreen;
+
+  if (!shouldShow) {
     if (fullscreenControl) {
       fullscreenControl.remove();
       fullscreenControl = null;
@@ -1120,23 +1128,28 @@ function toggleFullscreenControl(show) {
 
   // Check visibility flags
   if (fullscreenHideSite || fullscreenHideSession) {
+    if (fullscreenControl) {
+      fullscreenControl.remove();
+      fullscreenControl = null;
+    }
     return;
   }
-
-  const fsElement =
-    document.fullscreenElement ||
-    document.webkitFullscreenElement ||
-    document.mozFullScreenElement ||
-    document.msFullscreenElement;
-  if (!fsElement) return;
 
   // Create if not exists
   if (!fullscreenControl) {
     createFullscreenControl();
   }
 
-  // Append to fullscreen element
-  fsElement.appendChild(fullscreenControl);
+  fullscreenControl.classList.toggle(
+    "fs-outside-fullscreen",
+    !fullscreenElement
+  );
+
+  // Append to fullscreen element or page root
+  const targetElement = fullscreenElement || document.documentElement;
+  if (fullscreenControl.parentElement !== targetElement) {
+    targetElement.appendChild(fullscreenControl);
+  }
   updateFullscreenSpeedDisplay();
 }
 
@@ -1224,7 +1237,7 @@ function createFullscreenControl() {
   hideSessionOption.textContent = "Hide for this session";
   hideSessionOption.addEventListener("click", () => {
     fullscreenHideSession = true;
-    toggleFullscreenControl(false);
+    updateFullscreenControlVisibility();
   });
 
   const hideSiteOption = document.createElement("div");
@@ -1232,7 +1245,7 @@ function createFullscreenControl() {
   hideSiteOption.textContent = "Hide on this site";
   hideSiteOption.addEventListener("click", () => {
     fullscreenHideSite = true;
-    toggleFullscreenControl(false);
+    updateFullscreenControlVisibility();
 
     // Save to storage
     const hostname = window.location.hostname;

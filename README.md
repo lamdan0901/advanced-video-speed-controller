@@ -110,6 +110,7 @@ Note: When using developer mode, you may see a notification about using develope
 - **Remember speed for this site**: Automatically applies your last used speed when you return to a website
 - **Enable keyboard shortcuts**: Allows control of playback speed with keyboard shortcuts
 - **Show speed selector in YouTube player**: Adds a speed control directly in the YouTube player interface
+- **Show top-right controller outside fullscreen**: Keeps the floating speed controller visible even when not in fullscreen mode
 
 ### Keyboard Shortcuts
 

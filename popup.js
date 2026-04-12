@@ -19,6 +19,9 @@ document.addEventListener("DOMContentLoaded", function () {
     "youtube-speed-selector"
   );
   const hideFullscreenCheckbox = document.getElementById("hide-fullscreen");
+  const showOutsideFullscreenCheckbox = document.getElementById(
+    "show-outside-fullscreen"
+  );
 
   let currentSpeed = 1.0;
   let customPresets = [];
@@ -134,6 +137,7 @@ document.addEventListener("DOMContentLoaded", function () {
             "rememberSpeedEnabled", // Add this to track remember speed globally
             "youtubeSpeedSelectorEnabled", // Add this to track YouTube speed selector
             "fullscreenDisabledSites", // Add this to track disabled fullscreen sites
+            "showOutsideFullscreenEnabled", // Show controller even when not fullscreen
           ],
           function (data) {
             if (chrome.runtime.lastError) {
@@ -153,6 +157,8 @@ document.addEventListener("DOMContentLoaded", function () {
             // Fullscreen disabled state
             const fsDisabledSites = data.fullscreenDisabledSites || {};
             hideFullscreenCheckbox.checked = !!fsDisabledSites[currentHostname];
+            showOutsideFullscreenCheckbox.checked =
+              data.showOutsideFullscreenEnabled === true;
 
             // Always try to load site-specific speed first if site is not disabled and remember speed is enabled
             let siteSpeedFound = false;
@@ -354,6 +360,21 @@ document.addEventListener("DOMContentLoaded", function () {
         chrome.tabs.sendMessage(tabs[0].id, {
           action: "updateFullscreenSettings",
           disabled: shouldHide,
+        });
+      }
+    });
+  });
+
+  showOutsideFullscreenCheckbox.addEventListener("change", function () {
+    chrome.storage.sync.set({
+      showOutsideFullscreenEnabled: this.checked,
+    });
+
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          action: "updateSettings",
+          showOutsideFullscreenEnabled: showOutsideFullscreenCheckbox.checked,
         });
       }
     });

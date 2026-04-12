@@ -112,6 +112,10 @@
   user-select: none;
 }
 
+.fs-speed-control.fs-outside-fullscreen {
+  position: fixed;
+}
+
 .fs-main-wrapper {
   display: flex;
   align-items: center;
