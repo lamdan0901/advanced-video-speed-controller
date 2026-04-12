@@ -1078,11 +1078,14 @@ function setupFullscreenSpeedControl() {
   // Check if disabled for this site
   const hostname = window.location.hostname;
   chrome.storage.sync.get(
-    ["fullscreenDisabledSites", "showOutsideFullscreenEnabled"],
+    ["fullscreenDisabledSites", "outsideFullscreenEnabledSites"],
     function (data) {
-    const disabledSites = data.fullscreenDisabledSites || {};
-    fullscreenHideSite = !!disabledSites[hostname];
-      showOutsideFullscreenEnabled = data.showOutsideFullscreenEnabled === true;
+      const disabledSites = data.fullscreenDisabledSites || {};
+      fullscreenHideSite = !!disabledSites[hostname];
+      const outsideFullscreenEnabledSites =
+        data.outsideFullscreenEnabledSites || {};
+      showOutsideFullscreenEnabled =
+        !!outsideFullscreenEnabledSites[hostname];
       updateFullscreenControlVisibility();
     }
   );

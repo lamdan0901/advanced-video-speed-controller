@@ -137,7 +137,7 @@ document.addEventListener("DOMContentLoaded", function () {
             "rememberSpeedEnabled", // Add this to track remember speed globally
             "youtubeSpeedSelectorEnabled", // Add this to track YouTube speed selector
             "fullscreenDisabledSites", // Add this to track disabled fullscreen sites
-            "showOutsideFullscreenEnabled", // Show controller even when not fullscreen
+            "outsideFullscreenEnabledSites", // Show controller outside fullscreen by site
           ],
           function (data) {
             if (chrome.runtime.lastError) {
@@ -157,8 +157,10 @@ document.addEventListener("DOMContentLoaded", function () {
             // Fullscreen disabled state
             const fsDisabledSites = data.fullscreenDisabledSites || {};
             hideFullscreenCheckbox.checked = !!fsDisabledSites[currentHostname];
+            const outsideFullscreenEnabledSites =
+              data.outsideFullscreenEnabledSites || {};
             showOutsideFullscreenCheckbox.checked =
-              data.showOutsideFullscreenEnabled === true;
+              !!outsideFullscreenEnabledSites[currentHostname];
 
             // Always try to load site-specific speed first if site is not disabled and remember speed is enabled
             let siteSpeedFound = false;
@@ -366,8 +368,19 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   showOutsideFullscreenCheckbox.addEventListener("change", function () {
-    chrome.storage.sync.set({
-      showOutsideFullscreenEnabled: this.checked,
+    if (!currentHostname) return;
+
+    chrome.storage.sync.get(["outsideFullscreenEnabledSites"], function (data) {
+      const enabledSites = data.outsideFullscreenEnabledSites || {};
+      if (showOutsideFullscreenCheckbox.checked) {
+        enabledSites[currentHostname] = true;
+      } else {
+        delete enabledSites[currentHostname];
+      }
+
+      chrome.storage.sync.set({
+        outsideFullscreenEnabledSites: enabledSites,
+      });
     });
 
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
