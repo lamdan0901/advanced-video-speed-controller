@@ -119,6 +119,17 @@ function initialize() {
         }
       );
     } catch (e) {}
+  } else {
+    // We are in an iframe. Request current speed from the top window.
+    try {
+      window.top.postMessage(
+        {
+          type: "VIDEO_SPEED_CONTROL",
+          action: "REQUEST_SPEED"
+        },
+        "*"
+      );
+    } catch (e) {}
   }
 
   // Create speed indicator even if disabled (will be shown when enabled)
@@ -886,23 +897,44 @@ window.addEventListener("message", function (event) {
     switch (event.data.action) {
       case "SET_SPEED":
         if (!siteDisabled && event.data.speed) {
+          currentSpeed = event.data.speed;
           const videos = document.querySelectorAll("video");
           videos.forEach((video) => {
             video.playbackRate = event.data.speed;
           });
         }
         break;
+      case "REQUEST_SPEED":
+        if (window.top === window.self && !siteDisabled) {
+          try {
+            event.source.postMessage(
+              {
+                type: "VIDEO_SPEED_CONTROL",
+                action: "SET_SPEED",
+                speed: currentSpeed,
+              },
+              "*"
+            );
+          } catch (e) {
+            // Handle cross-origin errors silently
+          }
+        }
+        break;
       case "GET_SPEED":
         const videos = document.querySelectorAll("video");
         if (videos.length > 0) {
-          event.source.postMessage(
-            {
-              type: "VIDEO_SPEED_CONTROL",
-              action: "SPEED_UPDATE",
-              speed: videos[0].playbackRate,
-            },
-            "*"
-          );
+          try {
+            event.source.postMessage(
+              {
+                type: "VIDEO_SPEED_CONTROL",
+                action: "SPEED_UPDATE",
+                speed: videos[0].playbackRate,
+              },
+              "*"
+            );
+          } catch (e) {
+            // Handle cross-origin errors silently
+          }
         }
         break;
     }
