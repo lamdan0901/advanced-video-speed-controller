@@ -1298,8 +1298,8 @@ function createFullscreenControl() {
   speedDisplay.appendChild(presetsMenu); // Nesting menu inside display for hover logic
   hideBtn.appendChild(hideMenu); // Nesting menu inside button for click logic
 
-  wrapper.appendChild(speedDisplay);
   wrapper.appendChild(hideBtn);
+  wrapper.appendChild(speedDisplay);
   fullscreenControl.appendChild(wrapper);
 
   // Hide button click to toggle its menu

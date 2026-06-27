@@ -106,7 +106,7 @@
 .fs-speed-control {
   position: absolute;
   top: 24px;
-  right: 24px;
+  right: 20px;
   z-index: 2147483647;
   font-family: Roboto, Arial, sans-serif;
   user-select: none;
@@ -146,19 +146,27 @@
   color: rgba(255, 255, 255, 0.7);
   padding: 8px 10px;
   cursor: pointer;
-  border-left: 1px solid rgba(255, 255, 255, 0.15);
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
   position: relative;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.fs-main-wrapper:hover .fs-hide-btn {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .fs-hide-btn:hover {
   color: white;
   background: rgba(255, 255, 255, 0.1);
-  border-top-right-radius: 8px;
-  border-bottom-right-radius: 8px;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
 }
 
 /* Presets Menu (Hover) */
