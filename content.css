@@ -105,8 +105,8 @@
 /* Fullscreen Speed Control Styles */
 .fs-speed-control {
   position: absolute;
-  top: 24px;
-  right: 24px;
+  top: 14px;
+  right: 14px;
   z-index: 2147483647;
   font-family: Roboto, Arial, sans-serif;
   user-select: none;
@@ -119,16 +119,18 @@
 .fs-main-wrapper {
   display: flex;
   align-items: center;
-  background: rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(2px);
+  background: transparent;
   border-radius: 8px;
   overflow: visible;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  transition: opacity 0.2s, background 0.2s;
+  transition: opacity 0.2s, background 0.2s, box-shadow 0.2s;
 }
 
-.fs-main-wrapper:hover {
+/* Active = hover, or hide-menu open (mouse may have left) */
+.fs-main-wrapper:hover,
+.fs-main-wrapper:has(.fs-hide-menu.visible) {
   background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .fs-speed-display {
@@ -140,33 +142,44 @@
   position: relative;
   min-width: 45px;
   text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7);
 }
 
+/* X button always occupies space (no layout shift), only fades in when active */
 .fs-hide-btn {
+  display: flex;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  order: -1; /* left of the speed display */
   color: rgba(255, 255, 255, 0.7);
   padding: 8px 10px;
   cursor: pointer;
-  border-left: 1px solid rgba(255, 255, 255, 0.15);
-  display: flex;
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
   align-items: center;
   justify-content: center;
   font-size: 14px;
   position: relative;
 }
 
+.fs-main-wrapper:hover .fs-hide-btn,
+.fs-main-wrapper:has(.fs-hide-menu.visible) .fs-hide-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .fs-hide-btn:hover {
   color: white;
   background: rgba(255, 255, 255, 0.1);
-  border-top-right-radius: 8px;
-  border-bottom-right-radius: 8px;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
 }
 
 /* Presets Menu (Hover) */
 .fs-presets-menu {
   position: absolute;
   top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 0;
   margin-top: 8px;
   background: rgba(15, 15, 15, 0.95);
   border-radius: 8px;
@@ -199,7 +212,7 @@
 .fs-hide-menu {
   position: absolute;
   top: 100%;
-  right: 0;
+  left: 0;
   margin-top: 8px;
   background: rgba(15, 15, 15, 0.95);
   border-radius: 8px;
